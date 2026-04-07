@@ -28,6 +28,7 @@ program entry, lifecycle and bootstraping
 - [ ] Editor config loading
 - [ ] Window creation, display init
 - [ ] Modules boot order
+- [ ] Layer System
 - [ ] Runtime mode selection
 - [ ] Main loop, frame loop, fixed update loop
 - [ ] Global service registration
