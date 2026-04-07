@@ -197,11 +197,11 @@
 //  resources. 2016-08-27: Vulkan: Fix Vulkan example for use when a depth
 //  buffer is active.
 
-#include "imgui.h"
+#include "./imgui/imgui.h"
 #ifndef IMGUI_DISABLE
 #include <stdio.h>
 
-#include "imgui_impl_vulkan.h"
+#include "./backends/imgui_impl_vulkan.h"
 #ifndef IM_MAX
 #define IM_MAX(A, B) (((A) >= (B)) ? (A) : (B))
 #endif

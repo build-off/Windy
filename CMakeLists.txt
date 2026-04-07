@@ -1,4 +1,4 @@
-cmake_required_minimum(3.14)
+cmake_minimum_required(VERSION 3.14)
 project(Windy C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -20,7 +20,7 @@ target_include_directories(imgui_exm PRIVATE
 
 target_link_libraries(imgui_exm PRIVATE
     glfw3
-    Vulkan::Vulkan
+    Vulkan
 )
 
 
