@@ -22,8 +22,8 @@
 #include <stdio.h>  // printf, fprintf
 #include <stdlib.h> // abort
 
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
+#include "./backends/imgui_impl_glfw.h"
+#include "./imgui/imgui.h"
 #include "imgui_impl_vulkan.h"
 #define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN

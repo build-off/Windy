@@ -178,9 +178,9 @@
 //  unavailable/missing (instead of -1,-1). 2016-10-15: Misc: Added a void*
 //  user_data parameter to Clipboard function handlers.
 
-#include "imgui.h"
+#include "./imgui/imgui.h"
 #ifndef IMGUI_DISABLE
-#include "imgui_impl_glfw.h"
+#include "./backends/imgui_impl_glfw.h"
 
 // Clang warnings with -Weverything
 #if defined(__clang__)
@@ -270,9 +270,9 @@
 #define GLFW_HAS_PER_MONITOR_DPI \
   (GLFW_VERSION_COMBINED >= 3300) // 3.3+ glfwGetMonitorContentScale
 #ifdef GLFW_RESIZE_NESW_CURSOR    // Let's be nice to people who pulled GLFW
-                               // between 2019-04-16 (3.4 define) and 2019-11-29
-                               // (cursors defines) // FIXME: Remove when
-                               // GLFW 3.4 is released?
+// between 2019-04-16 (3.4 define) and 2019-11-29
+// (cursors defines) // FIXME: Remove when
+// GLFW 3.4 is released?
 #define GLFW_HAS_NEW_CURSORS \
   (GLFW_VERSION_COMBINED >=  \
    3400) // 3.4+ GLFW_RESIZE_ALL_CURSOR, GLFW_RESIZE_NESW_CURSOR,
