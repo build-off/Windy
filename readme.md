@@ -2,6 +2,8 @@
 educational game engine, with buildin support for terminal-based games
 with ECS system for modularity
 
+## Roadmap
+
 ## Core
 is the low-level reusable foundation for all the other parts of the 
 engine, the main idea is also that it does not have almost no dependencies
