@@ -27,6 +27,11 @@ add_executable(imgui_exm
     ./src/imgui/imgui_tables.cpp
     ./src/imgui/imgui_widgets.cpp
 
+    # core
+    ./src/core/log.h
+    ./src/core/log.cpp
+    ./src/core/base.h
+
     # backends
     ./src/imgui_impl_glfw.cpp
     ./src/imgui_impl_vulkan.cpp
@@ -35,6 +40,7 @@ add_executable(imgui_exm
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
+find_package(spdlog REQUIRED)
 
 target_include_directories(imgui_exm PRIVATE
     ./src/backends
@@ -45,6 +51,7 @@ target_link_libraries(imgui_exm PRIVATE
     glm::glm
     Vulkan::Vulkan
     Jolt
+    spdlog::spdlog
     TracyClient
 )
 
