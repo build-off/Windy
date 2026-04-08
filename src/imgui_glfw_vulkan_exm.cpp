@@ -10,7 +10,7 @@
 #include "./backends/imgui_impl_glfw.h"
 #include "./backends/imgui_impl_vulkan.h"
 #include "./imgui/imgui.h"
-#include "Jolt/Math/Real.h"
+#include "core/log.h"
 
 #define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN
@@ -70,7 +70,7 @@ class DefaultObjectLayerFilterImpl : public JPH::ObjectLayerPairFilter {
         return obj2 == Layers::MOVING;
       case Layers::MOVING:
         return true;
-      defualt:
+      default:
         JPH_ASSERT(false);
         return false;
     }
@@ -94,7 +94,8 @@ class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface {
     return BroadPhaseLayers::NUM_LAYERS;
   }
 
-  virtual JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer inLayer) {
+  virtual JPH::BroadPhaseLayer GetBroadPhaseLayer(
+      JPH::ObjectLayer inLayer) const override {
     JPH_ASSERT(inLayer < Layers::NUM_LAYERS);
     return mObjectToBroadPhase[inLayer];
   }
@@ -535,6 +536,7 @@ static void FramePresent(ImGui_ImplVulkanH_Window* wd) {
 // Main code
 int main(int argc, char** argv) {
   tracy::SetThreadName("Main thread");
+  Windy::Log::Init();
 
   JPH::RegisterDefaultAllocator();
   JPH::Trace = TraceImpl;
@@ -550,13 +552,13 @@ int main(int argc, char** argv) {
   const uint cNumBodyMutexes = 0;
   const uint cMaxContactConstraints = 1024;
 
-  BPLayerInterfaceImpl* broad_phase_layer_interface;
+  BPLayerInterfaceImpl broad_phase_layer_interface;
   ObjectVsBroadPhaseLayerFilterImpl object_vs_broadphase_layer_filter;
   DefaultObjectLayerFilterImpl object_vs_object_layer_filter;
 
   JPH::PhysicsSystem physics_system;
   physics_system.Init(cMaxBodies, cNumBodyMutexes, cMaxBodyPairs,
-                      cMaxContactConstraints, *broad_phase_layer_interface,
+                      cMaxContactConstraints, broad_phase_layer_interface,
                       object_vs_broadphase_layer_filter,
                       object_vs_object_layer_filter);
 
@@ -709,21 +711,7 @@ int main(int argc, char** argv) {
   ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
   // Main loop
-  uint step = 0;
   while (!glfwWindowShouldClose(window)) {
-    ++step;
-
-    JPH::RVec3 position = body_interface.GetCenterOfMassPosition(sphere_id);
-    JPH::Vec3 velocity = body_interface.GetLinearVelocity(sphere_id);
-    std::cout << "Step " << step << ": Position = (" << position.GetX() << ", "
-              << position.GetY() << ", " << position.GetZ() << "), Velocity = ("
-              << velocity.GetX() << ", " << velocity.GetY() << ", "
-              << velocity.GetZ() << ")" << std::endl;
-
-    const int cCollisionSteps = 1;
-    physics_system.Update(cDeltaTime, cCollisionSteps, &temp_allocator,
-                          &job_system);
-
     ZoneScopedN("Frame");
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to
@@ -827,7 +815,6 @@ int main(int argc, char** argv) {
       FrameRender(wd, draw_data);
       FramePresent(wd);
     }
-
     FrameMark;
   }
 
