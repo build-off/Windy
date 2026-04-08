@@ -844,5 +844,13 @@ int main(int argc, char** argv) {
   glfwDestroyWindow(window);
   glfwTerminate();
 
-  return 0;
+  // Physics cleanup
+  body_interface.RemoveBody(sphere_id);
+  body_interface.DestroyBody(sphere_id);
+  body_interface.RemoveBody(floor->GetID());
+  body_interface.DestroyBody(floor->GetID());
+  JPH::UnregisterTypes();
+
+  delete JPH::Factory::sInstance;
+  JPH::Factory::sInstance = nullptr;
 }
