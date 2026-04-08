@@ -45,7 +45,7 @@ target_link_libraries(imgui_exm PRIVATE
     glm::glm
     Vulkan::Vulkan
     Jolt
-     TracyClient
+    TracyClient
 )
 
 

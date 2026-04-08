@@ -9,3 +9,5 @@ AllowShortIfStatementsOnASingleLine: Always
 ColumnLimit: 80
 ReferenceAlignment: Left
 
+SortIncludes: false
+
