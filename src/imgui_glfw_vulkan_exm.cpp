@@ -22,9 +22,13 @@
 #include <stdio.h>  // printf, fprintf
 #include <stdlib.h> // abort
 
+#include <common/TracySystem.hpp>
+#include <tracy/Tracy.hpp>
+
 #include "./backends/imgui_impl_glfw.h"
 #include "./backends/imgui_impl_vulkan.h"
 #include "./imgui/imgui.h"
+
 #define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -394,6 +398,7 @@ static void FramePresent(ImGui_ImplVulkanH_Window* wd) {
 
 // Main code
 int main(int, char**) {
+  tracy::SetThreadName("Main thread");
   glfwSetErrorCallback(glfw_error_callback);
   if (!glfwInit()) return 1;
 
@@ -509,6 +514,7 @@ int main(int, char**) {
 
   // Main loop
   while (!glfwWindowShouldClose(window)) {
+    ZoneScopedN("Frame");
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to
     // tell if dear imgui wants to use your inputs.
@@ -518,7 +524,11 @@ int main(int, char**) {
     // data to your main application, or clear/overwrite your copy of the
     // keyboard data. Generally you may always pass all inputs to dear imgui,
     // and hide them from your application based on those two flags.
-    glfwPollEvents();
+
+    {
+      ZoneScopedN("Poll events");
+      glfwPollEvents();
+    }
 
     // Resize swap chain?
     int fb_width, fb_height;
@@ -546,7 +556,10 @@ int main(int, char**) {
     // 1. Show the big demo window (Most of the sample code is in
     // ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear
     // ImGui!).
-    if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+    {
+      ZoneScopedN("render");
+      if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+    }
 
     // 2. Show a simple window that we create ourselves. We use a Begin/End pair
     // to create a named window.
@@ -606,6 +619,8 @@ int main(int, char**) {
       FrameRender(wd, draw_data);
       FramePresent(wd);
     }
+
+    FrameMark;
   }
 
   // Cleanup
