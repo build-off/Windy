@@ -28,6 +28,7 @@
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 #include <Jolt/Physics/Collision/ObjectLayer.h>
+#include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 
 JPH_SUPPRESS_WARNINGS
 
@@ -41,6 +42,7 @@ static void TraceImpl(const char* inFMT, ...) {
   std::cout << buffer << std::endl;
 }
 
+#define JPH_ENABLE_ASSERTS
 #ifdef JPH_ENABLE_ASSERTS
 static bool AssertFailedImpl(const char* inExpression, const char* inMessage,
                              const char* inFile, uint inLine) {
@@ -55,6 +57,29 @@ static constexpr JPH::ObjectLayer NON_MOVING = 0;
 static constexpr JPH::ObjectLayer MOVING = 1;
 static constexpr JPH::ObjectLayer NUM_LAYERS = 2;
 } // namespace Layers
+
+class DefaultObjectLayerFilterImpl : public JPH::ObjectLayerPairFilter {
+ public:
+  virtual bool ShouldCollide(JPH::ObjectLayer obj1,
+                             JPH::ObjectLayer obj2) const override {
+    switch (obj1) {
+      case Layers::NON_MOVING:
+        return obj2 == Layers::MOVING;
+      case Layers::MOVING:
+        return true;
+      defualt:
+        JPH_ASSERT(false);
+        return false;
+    }
+  }
+};
+
+// Broadcast layers
+namespace BroadPhaseLayers {
+static constexpr JPH::BroadPhaseLayer NON_MOVING(0);
+static constexpr JPH::BroadPhaseLayer MOVING(1);
+static constexpr uint NUM_LAYERS(2);
+} // namespace BroadPhaseLayers
 
 // Volk headers
 #ifdef IMGUI_IMPL_VULKAN_USE_VOLK
