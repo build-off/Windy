@@ -1,26 +1,5 @@
-// Dear ImGui: standalone example application for Glfw + Vulkan
-
-// Learn about Dear ImGui:
-// - FAQ                  https://dearimgui.com/faq
-// - Getting Started      https://dearimgui.com/getting-started
-// - Documentation        https://dearimgui.com/docs (same as your local docs/
-// folder).
-// - Introduction, links and more at the top of imgui.cpp
-
-// Important note to the reader who wish to integrate imgui_impl_vulkan.cpp/.h
-// in their own engine/app.
-// - Common ImGui_ImplVulkan_XXX functions and structures are used to interface
-// with imgui_impl_vulkan.cpp/.h.
-//   You will use those if you want to use this rendering backend in your
-//   engine/app.
-// - Helper ImGui_ImplVulkanH_XXX functions and structures are only used by this
-// example (main.cpp) and by
-//   the backend itself (imgui_impl_vulkan.cpp), but should PROBABLY NOT be used
-//   by your own engine/app code.
-// Read comments in imgui_impl_vulkan.h.
-
-#include <stdio.h>  // printf, fprintf
-#include <stdlib.h> // abort
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <common/TracySystem.hpp>
 #include <tracy/Tracy.hpp>
@@ -32,6 +11,8 @@
 #define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
+#include <Jolt/Jolt.h>
 
 // Volk headers
 #ifdef IMGUI_IMPL_VULKAN_USE_VOLK
@@ -556,10 +537,8 @@ int main(int, char**) {
     // 1. Show the big demo window (Most of the sample code is in
     // ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear
     // ImGui!).
-    {
-      ZoneScopedN("render");
-      if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
-    }
+
+    if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
 
     // 2. Show a simple window that we create ourselves. We use a Begin/End pair
     // to create a named window.

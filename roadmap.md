@@ -5,6 +5,7 @@ engine, the main idea is also that it does not have almost no dependencies
 on the rest of the engine
 
 - [ ] Platform abstraction ( only unix for now )
+
 - [ ] Math lib - most of the utils from scratch, based on glm
 - [ ] Containers | Utilities
 - [ ] Hashing, UUID
@@ -12,7 +13,7 @@ on the rest of the engine
 - [ ] File system - file/path utils
 - [ ] Threading
 - [ ] Job,task system
-- [ ] Time | Clocks | Timers
+- [ ] Time | Clocks | Timers, Delta time
 - [ ] Logging
 - [ ] Assertions | Validation
 - [ ] Events | Delegates | Signal
