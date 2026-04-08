@@ -10,6 +10,7 @@
 #include "./backends/imgui_impl_glfw.h"
 #include "./backends/imgui_impl_vulkan.h"
 #include "./imgui/imgui.h"
+#include "Jolt/Math/Real.h"
 
 #define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN
@@ -32,6 +33,7 @@
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 
 JPH_SUPPRESS_WARNINGS
+using namespace JPH::literals;
 
 static void TraceImpl(const char* inFMT, ...) {
   va_list list;
@@ -566,6 +568,33 @@ int main(int argc, char** argv) {
 
   JPH::BodyInterface& body_interface = physics_system.GetBodyInterface();
 
+  JPH::BoxShapeSettings floor_shape_settings(JPH::Vec3(100.0f, 1.0f, 100.0f));
+  floor_shape_settings.SetEmbedded();
+
+  // Creating a shape
+  JPH::ShapeSettings::ShapeResult floor_shape_result =
+      floor_shape_settings.Create();
+  JPH::ShapeRefC floor_shape = floor_shape_result.Get();
+  JPH::BodyCreationSettings floor_settings(
+      floor_shape, JPH::RVec3(0.0_r, -1.0_r, 0.0_r), JPH::Quat::sIdentity(),
+      JPH::EMotionType::Static, Layers::NON_MOVING);
+
+  JPH::Body* floor = body_interface.CreateBody(floor_settings);
+  body_interface.AddBody(floor->GetID(), JPH::EActivation::DontActivate);
+
+  JPH::BodyCreationSettings sphere_settings(
+      new JPH::SphereShape(0.5f), JPH::RVec3(0.0_r, 2.0_r, 0.0_r),
+      JPH::Quat::sIdentity(), JPH::EMotionType::Dynamic, Layers::MOVING);
+  JPH::BodyID sphere_id = body_interface.CreateAndAddBody(
+      sphere_settings, JPH::EActivation::Activate);
+
+  body_interface.SetLinearVelocity(sphere_id, JPH::Vec3(0.0f, -5.0f, 0.0f));
+  const float cDeltaTime = 1.0f / 60.0f;
+
+  // This is good, but with more objects and more complex scenes cause
+  // optimizing it is an expensive operation
+  physics_system.OptimizeBroadPhase();
+
   glfwSetErrorCallback(glfw_error_callback);
   if (!glfwInit()) return 1;
 
@@ -680,7 +709,21 @@ int main(int argc, char** argv) {
   ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
   // Main loop
+  uint step = 0;
   while (!glfwWindowShouldClose(window)) {
+    ++step;
+
+    JPH::RVec3 position = body_interface.GetCenterOfMassPosition(sphere_id);
+    JPH::Vec3 velocity = body_interface.GetLinearVelocity(sphere_id);
+    std::cout << "Step " << step << ": Position = (" << position.GetX() << ", "
+              << position.GetY() << ", " << position.GetZ() << "), Velocity = ("
+              << velocity.GetX() << ", " << velocity.GetY() << ", "
+              << velocity.GetZ() << ")" << std::endl;
+
+    const int cCollisionSteps = 1;
+    physics_system.Update(cDeltaTime, cCollisionSteps, &temp_allocator,
+                          &job_system);
+
     ZoneScopedN("Frame");
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to
