@@ -15,7 +15,7 @@ include(./cmake/jolt.cmake)
 include(./cmake/include.cmake)
 
 add_executable(imgui_exm
-    ./src/imgui_glfw_vulkan_exm.cpp
+    ./src/core/entry_point.cpp
 
     # imgui
     ./src/imgui/imconfig.h

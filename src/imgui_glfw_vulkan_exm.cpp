@@ -537,6 +537,7 @@ static void FramePresent(ImGui_ImplVulkanH_Window* wd) {
 int main(int argc, char** argv) {
   tracy::SetThreadName("Main thread");
   Windy::Log::Init();
+  WD_CORE_INFO("testing the logging utils");
 
   JPH::RegisterDefaultAllocator();
   JPH::Trace = TraceImpl;

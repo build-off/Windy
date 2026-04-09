@@ -21,7 +21,7 @@ void Log::Init() {
   logSinks[1]->set_pattern("[%T] [%l] %n: %v");
 
   s_CoreLogger =
-      std::make_shared<spdlog::logger>("HAZEL", begin(logSinks), end(logSinks));
+      std::make_shared<spdlog::logger>("WINDY", begin(logSinks), end(logSinks));
   spdlog::register_logger(s_CoreLogger);
   s_CoreLogger->set_level(spdlog::level::trace);
   s_CoreLogger->flush_on(spdlog::level::trace);
