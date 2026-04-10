@@ -51,7 +51,7 @@ class Renderer {
   vk::raii::PhysicalDevice physicalDevice = nullptr;
   vk::raii::Device device = nullptr;
   vk::PhysicalDeviceFeatures deviceFeatures;
-  vk::raii::Queue graphicsQueue = nullptr;
+  vk::raii::Queue queue = nullptr;
   vk::raii::SurfaceKHR surface = nullptr;
 
   std::vector<const char*> getRequiredInstanceExtensions() {
@@ -135,6 +135,7 @@ class Renderer {
 
   std::vector<const char*> requiredDeviceExtension = {
       vk::KHRSwapchainExtensionName};
+
   bool isDeviceSuitable(vk::raii::PhysicalDevice const& physicalDevice) {
     // validate for vulkan1.3, queue family suport with graphical
     // operations, support for all the extensions and features
@@ -220,26 +221,12 @@ class Renderer {
         queueInx = qfpInx;
         break;
       }
-
-      if (queueInx == ~0) {
-        throw std::runtime_error(
-            "Could not find a queue for graphics and present -> terminating");
-      }
     }
 
-    auto graphicsQueueFamilyProperty =
-        std::ranges::find_if(queueFamilyProperties, [](auto const& qfp) {
-          return (qfp.queueFlags & vk::QueueFlagBits::eGraphics) !=
-                 static_cast<vk::QueueFlags>(0);
-        });
-    auto graphicsIndex = static_cast<uint32_t>(std::distance(
-        queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
-    vk::DeviceQueueCreateInfo deviceQueueCreateInfo{};
-
-    float queuePriority = 0.5f;
-    deviceQueueCreateInfo.queueFamilyIndex = graphicsIndex;
-    deviceQueueCreateInfo.queueCount = 1;
-    deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
+    if (queueInx == ~0) {
+      throw std::runtime_error(
+          "Could not find a queue for graphics and present -> terminating");
+    }
 
     vk::StructureChain<vk::PhysicalDeviceFeatures2,
                        vk::PhysicalDeviceVulkan13Features,
@@ -250,8 +237,11 @@ class Renderer {
             {true}  // Enable extended dynamic state from the extension
         };
 
-    std::vector<const char*> requiredDeviceExtension = {
-        vk::KHRSwapchainExtensionName};
+    float queue_priority = 0.5f;
+    vk::DeviceQueueCreateInfo deviceQueueCreateInfo{};
+    deviceQueueCreateInfo.queueFamilyIndex = queueInx;
+    deviceQueueCreateInfo.queueCount = 1;
+    deviceQueueCreateInfo.pQueuePriorities = &queue_priority;
 
     vk::DeviceCreateInfo deviceCreateInfo{};
     deviceCreateInfo.pNext = &featureChain.get<vk::PhysicalDeviceFeatures2>();
@@ -262,7 +252,20 @@ class Renderer {
     deviceCreateInfo.ppEnabledExtensionNames = requiredDeviceExtension.data();
 
     device = vk::raii::Device(physicalDevice, deviceCreateInfo);
-    graphicsQueue = vk::raii::Queue(device, graphicsIndex, 0);
+    queue = vk::raii::Queue(device, queueInx, 0);
+
+    // Swap chain
+
+    // details of swap chain support
+    // - basic swapchain support (number of images, width and height of them)
+    // - surface formats (pixel formats, color space)
+    // - available presentation modes
+    auto surfaceCapabilities =
+        physicalDevice.getSurfaceCapabilitiesKHR(*surface);
+    std::vector<vk::SurfaceFormatKHR> availableFormats =
+        physicalDevice.getSurfaceFormatsKHR(surface);
+    std::vector<vk::PresentModeKHR> availablePresentModes =
+        physicalDevice.getSurfacePresentModesKHR(surface);
   }
 
   void createSurface() {
