@@ -10,6 +10,7 @@ on the rest of the engine
 - [ ] Containers | Utilities
 - [ ] Hashing, UUID
 - [ ] Memory management
+- [ ] Asset pool
 - [ ] File system - file/path utils
 - [ ] Threading
 - [ ] Job,task system

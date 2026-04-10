@@ -51,7 +51,8 @@ class Renderer {
   vk::raii::PhysicalDevice physicalDevice = nullptr;
   vk::raii::Device device = nullptr;
   vk::PhysicalDeviceFeatures deviceFeatures;
-  vk::raii::Queue graphicsQueue;
+  vk::raii::Queue graphicsQueue = nullptr;
+  vk::raii::SurfaceKHR surface = nullptr;
 
   std::vector<const char*> getRequiredInstanceExtensions() {
     uint32_t glfwExtensionCount = 0;
@@ -210,6 +211,22 @@ class Renderer {
     // get a queue with graphics capabilities
     std::vector<vk::QueueFamilyProperties> queueFamilyProperties =
         physicalDevice.getQueueFamilyProperties();
+
+    uint32_t queueInx = ~0;
+    for (uint32_t qfpInx = 0; qfpInx < queueFamilyProperties.size(); ++qfpInx) {
+      if ((queueFamilyProperties[qfpInx].queueFlags &
+           vk::QueueFlagBits::eGraphics) &&
+          physicalDevice.getSurfaceSupportKHR(qfpInx, *surface)) {
+        queueInx = qfpInx;
+        break;
+      }
+
+      if (queueInx == ~0) {
+        throw std::runtime_error(
+            "Could not find a queue for graphics and present -> terminating");
+      }
+    }
+
     auto graphicsQueueFamilyProperty =
         std::ranges::find_if(queueFamilyProperties, [](auto const& qfp) {
           return (qfp.queueFlags & vk::QueueFlagBits::eGraphics) !=
@@ -248,8 +265,17 @@ class Renderer {
     graphicsQueue = vk::raii::Queue(device, graphicsIndex, 0);
   }
 
+  void createSurface() {
+    VkSurfaceKHR _surface;
+    if (glfwCreateWindowSurface(*instance, window, nullptr, &_surface)) {
+      throw std::runtime_error("failed to create window surface!");
+    }
+    surface = vk::raii::SurfaceKHR(instance, _surface);
+  }
+
   void initvulkan() {
     createInstance();
+    createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
   };
