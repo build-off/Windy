@@ -1,4 +1,5 @@
 #include <vulkan/vulkan_core.h>
+#include <cstdint>
 #include <limits>
 #include <vector>
 #include "vulkan/vulkan.hpp"
@@ -54,6 +55,10 @@ class Renderer {
   vk::PhysicalDeviceFeatures deviceFeatures;
   vk::raii::Queue queue = nullptr;
   vk::raii::SurfaceKHR surface = nullptr;
+  vk::Extent2D swapChainExtent;
+  vk::SurfaceFormatKHR swapChainSurfaceFormat;
+  vk::SwapchainKHR swapChain;
+  std::vector<vk::Image> swapChainImages;
 
   std::vector<const char*> getRequiredInstanceExtensions() {
     uint32_t glfwExtensionCount = 0;
@@ -312,6 +317,52 @@ class Renderer {
                                  capabilities.maxImageExtent.height)};
   }
 
+  static uint32_t chooseSwapMinImageCount(
+      vk::SurfaceCapabilitiesKHR const& surfaceCapabilitites) {
+    auto minImageCount = std::max(3u, surfaceCapabilitites.minImageCount);
+    if ((0 < surfaceCapabilitites.maxImageCount) &&
+        (surfaceCapabilitites.maxImageCount < minImageCount)) {
+      minImageCount = surfaceCapabilitites.maxImageCount;
+    }
+    return minImageCount;
+  }
+
+  void createSwapChain() {
+    vk::SurfaceCapabilitiesKHR surfaceCapabilitites =
+        physicalDevice.getSurfaceCapabilitiesKHR(*surface);
+    swapChainExtent = chooseSwapExtent(surfaceCapabilitites);
+    uint32_t minImageCount = chooseSwapMinImageCount(surfaceCapabilitites);
+
+    // Surface format
+    std::vector<vk::SurfaceFormatKHR> availableFormats =
+        physicalDevice.getSurfaceFormatsKHR(*surface);
+    swapChainSurfaceFormat = chooseSwapSurfaceFormat(availableFormats);
+
+    uint32_t imageCount = surfaceCapabilitites.minImageCount + 1;
+    std::vector<vk::PresentModeKHR> availablePresentModes =
+        physicalDevice.getSurfacePresentModesKHR(*surface);
+
+    // CreateInfo swapchain struct
+    vk::SwapchainCreateInfoKHR swapChainCreateInfo{};
+    swapChainCreateInfo.surface = *surface;
+    swapChainCreateInfo.minImageCount = minImageCount;
+    swapChainCreateInfo.imageFormat = swapChainSurfaceFormat.format;
+    swapChainCreateInfo.imageColorSpace = swapChainSurfaceFormat.colorSpace;
+    swapChainCreateInfo.imageExtent = swapChainExtent;
+    swapChainCreateInfo.imageArrayLayers = 1;
+    swapChainCreateInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+    swapChainCreateInfo.imageSharingMode = vk::SharingMode::eExclusive;
+    swapChainCreateInfo.preTransform = surfaceCapabilitites.currentTransform;
+    swapChainCreateInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+    swapChainCreateInfo.presentMode =
+        chooseSwapPresentMode(availablePresentModes);
+    swapChainCreateInfo.clipped = true;
+    swapChainCreateInfo.oldSwapchain = nullptr;
+
+    swapChain = vk::raii::SwapchainKHR(device, swapChainCreateInfo);
+    swapChainImages = swapChain.getImages();
+  }
+
   void createSurface() {
     VkSurfaceKHR _surface;
     if (glfwCreateWindowSurface(*instance, window, nullptr, &_surface)) {
@@ -325,6 +376,7 @@ class Renderer {
     createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
+    createSwapChain();
   };
   void loop() {
     while (!glfwWindowShouldClose(window)) {
