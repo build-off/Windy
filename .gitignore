@@ -1,4 +1,5 @@
 glfw/
 build/
+vulkan_sdk/
 notes.txt
-Windy.log
+*.spv

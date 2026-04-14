@@ -14,6 +14,39 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(./cmake/jolt.cmake)
 include(./cmake/include.cmake)
 
+# Compiling shaders
+# TODO: handle executable for other systems
+set(SLANGC_EXECUTABLE vulkan_sdk/1.4.341.1/x86_64/bin/slangc)
+function(add_slang_shader_target TARGET)
+    cmake_parse_arguments("SHADER" "" "" "SOURCES" ${ARGN})
+    set(SHADERS_DIR ${CMAKE_CURRENT_LIST_DIR}/shaders)
+    set(ENTRY_POINTS -entry vertMain -entry fragMain)
+    sete(OUTPUT_FILE slang.spv)
+
+    add_custom_command (
+		    OUTPUT ${SHADERS_DIR}
+		    COMMAND ${CMAKE_COMMAND} -E make_directory ${SHADERS_DIR}
+		      -target spirv 
+		      -profile spirv_1_4 
+			    -emit-spirv-directly -fvk-use-entrypoint-name ${ENTRY_POINTS}
+			    -o ${OUTPUT_FILE}
+			  WORKING_DIRECTORY ${SHADERS_DIR}
+			  DEPENDS ${SHADERS_DIR} ${SHADER_SOURCES}
+			  COMMENT "Compiling Slang Shaders"
+			  VERBATIM
+    )
+    add_custom_command (
+	    OUTPUT ${SHADERS_DIR}/slang.spv
+	    COMMAND ${SLANGC_EXECUTABLE}
+    )
+    add_custom_target (${TARGET} DEPENDS ${SHADERS_DIR}/slang.spv)
+endfunction()
+
+set(SHADER_SLANG_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/shader.slang
+)
+add_slang_shader_target(shaders SOURCES ${SHADER_SLANG_SOURCES})
+
 add_executable(imgui_exm
     ./src/core/entry_point.cpp
 
@@ -37,6 +70,8 @@ add_executable(imgui_exm
     ./src/imgui_impl_vulkan.cpp
 )
 
+add_dependencies(imgui_exm shaders)
+
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
@@ -54,6 +89,8 @@ target_link_libraries(imgui_exm PRIVATE
     spdlog::spdlog
     TracyClient
 )
+
+
 
 
 
