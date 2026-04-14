@@ -395,6 +395,8 @@ class Renderer {
     }
   }
 
+  void createGraphicsPipeline() {}
+
   void initvulkan() {
     createInstance();
     createSurface();
@@ -402,6 +404,7 @@ class Renderer {
     createLogicalDevice();
     createSwapChain();
     createImageViews();
+    createGraphicsPipeline();
   };
   void loop() {
     while (!glfwWindowShouldClose(window)) {
