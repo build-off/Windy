@@ -1,6 +1,8 @@
 #include <cstdint>
 #include <limits>
 #include <vector>
+#include <fstream>
+
 #include "vulkan/vulkan.hpp"
 
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
@@ -30,6 +32,13 @@ const bool enableValidationLayers = true;
 static void glfw_error_callback(int error, const char* description) {
   WD_CORE_ERROR(description);
   fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+}
+
+static std::vector<char> read_file(const std::string& filename) {
+  std::ifstream file(filename, std::ios::ate | std::ios::binary);
+  if (!file.is_open()) {
+    throw std::runtime_error("failed to open file!");
+  }
 }
 
 class Renderer {
