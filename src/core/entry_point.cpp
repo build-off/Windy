@@ -1,8 +1,8 @@
-#include <vulkan/vulkan_core.h>
 #include <cstdint>
 #include <limits>
 #include <vector>
 #include "vulkan/vulkan.hpp"
+
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
 #include <vulkan/vulkan_raii.hpp>
 #else
@@ -57,7 +57,7 @@ class Renderer {
   vk::raii::SurfaceKHR surface = nullptr;
   vk::Extent2D swapChainExtent;
   vk::SurfaceFormatKHR swapChainSurfaceFormat;
-  vk::SwapchainKHR swapChain;
+  vk::raii::SwapchainKHR swapChain = nullptr;
   std::vector<vk::Image> swapChainImages;
 
   std::vector<const char*> getRequiredInstanceExtensions() {
@@ -237,11 +237,16 @@ class Renderer {
     vk::StructureChain<vk::PhysicalDeviceFeatures2,
                        vk::PhysicalDeviceVulkan13Features,
                        vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
-        featureChain = {
-            {},     // vk::PhysicalDeviceFeatures2 (empty for now)
-            {true}, // Enable dynamic rendering from Vulkan 1.3
-            {true}  // Enable extended dynamic state from the extension
-        };
+        featureChain;
+    // vk::PhysicalDeviceFeatures2 (empty for now)
+    auto& features2 = featureChain.get<vk::PhysicalDeviceFeatures2>();
+    // Enable dynamic rendering from Vulkan 1.3
+    auto& v13 = featureChain.get<vk::PhysicalDeviceVulkan13Features>();
+    v13.dynamicRendering = VK_TRUE;
+    // Enable extended dynamic state from the extension
+    auto& ext =
+        featureChain.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
+    ext.extendedDynamicState = VK_TRUE;
 
     float queue_priority = 0.5f;
     vk::DeviceQueueCreateInfo deviceQueueCreateInfo{};
