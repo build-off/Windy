@@ -409,7 +409,33 @@ class Renderer {
     }
   }
 
-  void createGraphicsPipeline() {}
+  // Shader modules
+  [[nodiscard]] vk::raii::ShaderModule createShaderModule(
+      const std::vector<char>& code) {
+    vk::ShaderModuleCreateInfo createInfo{};
+    createInfo.codeSize = code.size() * sizeof(char);
+    createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+    vk::raii::ShaderModule shaderModule{device, createInfo};
+    return shaderModule;
+  }
+
+  void createGraphicsPipeline() {
+    vk::raii::ShaderModule shaderModule =
+        createShaderModule(read_file("shaders/slang.spv"));
+    vk::PipelineShaderStageCreateInfo vertShaderStageInfo{};
+    vertShaderStageInfo.stage = vk::ShaderStageFlagBits::eVertex;
+    vertShaderStageInfo.module = shaderModule;
+    vertShaderStageInfo.pName = "vertName";
+
+    vk::PipelineShaderStageCreateInfo fragShaderStageInfo{};
+    fragShaderStageInfo.stage = vk::ShaderStageFlagBits::eFragment;
+    fragShaderStageInfo.module = shaderModule;
+    fragShaderStageInfo.pName = "fragMain";
+
+    // Pipeline creation steps
+    vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,
+                                                        fragShaderStageInfo};
+  }
 
   void initvulkan() {
     createInstance();
