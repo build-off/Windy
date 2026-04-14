@@ -59,6 +59,7 @@ class Renderer {
   vk::SurfaceFormatKHR swapChainSurfaceFormat;
   vk::raii::SwapchainKHR swapChain = nullptr;
   std::vector<vk::Image> swapChainImages;
+  std::vector<vk::raii::ImageView> swapChainImageViews;
 
   std::vector<const char*> getRequiredInstanceExtensions() {
     uint32_t glfwExtensionCount = 0;
@@ -131,7 +132,7 @@ class Renderer {
     vk::InstanceCreateInfo createInfo{};
     createInfo.pApplicationInfo = &appInfo;
     createInfo.enabledExtensionCount =
-        static_cast<uint32_t>(requiredLayers.size());
+        static_cast<uint32_t>(requiredExtensions.size());
     createInfo.ppEnabledExtensionNames = requiredExtensions.data();
     createInfo.enabledLayerCount = static_cast<uint32_t>(requiredLayers.size());
     createInfo.ppEnabledLayerNames = requiredLayers.data();
@@ -167,7 +168,7 @@ class Renderer {
         });
 
     auto features = physicalDevice.template getFeatures2<
-        vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
+        vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features,
         vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
     bool supportsRequiredFeatures =
         features.template get<vk::PhysicalDeviceVulkan13Features>()
@@ -235,6 +236,7 @@ class Renderer {
     }
 
     vk::StructureChain<vk::PhysicalDeviceFeatures2,
+                       vk::PhysicalDeviceVulkan12Features,
                        vk::PhysicalDeviceVulkan13Features,
                        vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
         featureChain;
@@ -376,12 +378,30 @@ class Renderer {
     surface = vk::raii::SurfaceKHR(instance, _surface);
   }
 
+  void createImageViews() {
+    assert(swapChainImageViews.empty());
+    vk::ImageViewCreateInfo imageViewCreateInfo{};
+    imageViewCreateInfo.viewType = vk::ImageViewType::e2D;
+    imageViewCreateInfo.format = swapChainSurfaceFormat.format;
+    imageViewCreateInfo.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0,
+                                            1, 0, 1};
+    imageViewCreateInfo.components = {
+        vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,
+        vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity};
+
+    for (auto& image : swapChainImages) {
+      imageViewCreateInfo.image = image;
+      swapChainImageViews.emplace_back(device, imageViewCreateInfo);
+    }
+  }
+
   void initvulkan() {
     createInstance();
     createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
     createSwapChain();
+    createImageViews();
   };
   void loop() {
     while (!glfwWindowShouldClose(window)) {
