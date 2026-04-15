@@ -461,6 +461,14 @@ class Renderer {
     viewportState.pScissors = &scissor;
 
     // Rasterizer
+    vk::PipelineRasterizationStateCreateInfo rasterizer{};
+    rasterizer.depthClampEnable = vk::False;
+    rasterizer.rasterizerDiscardEnable = vk::False;
+    rasterizer.polygonMode = vk::PolygonMode::eFill;
+    rasterizer.cullMode = vk::CullModeFlagBits::eBack;
+    rasterizer.frontFace = vk::FrontFace::eClockwise;
+    rasterizer.depthBiasEnable = vk::False;
+    rasterizer.lineWidth = 1.0f;
   }
 
   void initvulkan() {
