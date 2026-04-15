@@ -435,6 +435,32 @@ class Renderer {
     // Pipeline creation steps
     vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,
                                                         fragShaderStageInfo};
+
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
+    inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
+
+    // Viewports and scissors
+    // Viewport -> the region of the framebuffer that the output will be
+    // rendered to
+    vk::Viewport viewport{0.0f, 0.0f, static_cast<float>(swapChainExtent.width),
+                          static_cast<float>(swapChainExtent.height)};
+    vk::Rect2D scissor{vk::Offset2D{0, 0}, swapChainExtent};
+
+    std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport,
+                                                   vk::DynamicState::eScissor};
+    vk::PipelineDynamicStateCreateInfo dynamicState{};
+    dynamicState.dynamicStateCount =
+        static_cast<uint32_t>(dynamicStates.size());
+    dynamicState.pDynamicStates = dynamicStates.data();
+
+    vk::PipelineViewportStateCreateInfo viewportState{};
+    viewportState.viewportCount = 1;
+    viewportState.scissorCount = 1;
+    viewportState.pViewports = &viewport;
+    viewportState.pScissors = &scissor;
+
+    // Rasterizer
   }
 
   void initvulkan() {
