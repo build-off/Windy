@@ -469,6 +469,11 @@ class Renderer {
     rasterizer.frontFace = vk::FrontFace::eClockwise;
     rasterizer.depthBiasEnable = vk::False;
     rasterizer.lineWidth = 1.0f;
+
+    // Multisampling
+    vk::PipelineMultisampleStateCreateInfo multisampling{};
+    multisampling.rasterizationSamples = vk::SampleCountFlagBits::e1;
+    multisampling.sampleShadingEnable = vk::False;
   }
 
   void initvulkan() {
