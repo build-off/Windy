@@ -474,6 +474,26 @@ class Renderer {
     vk::PipelineMultisampleStateCreateInfo multisampling{};
     multisampling.rasterizationSamples = vk::SampleCountFlagBits::e1;
     multisampling.sampleShadingEnable = vk::False;
+
+    // Color blending -> using bitwise operations
+    vk::PipelineColorBlendAttachmentState colorBlendAttatchment;
+    colorBlendAttatchment.blendEnable = vk::False;
+    colorBlendAttatchment.colorWriteMask =
+        vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+        vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+    colorBlendAttatchment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+    colorBlendAttatchment.dstColorBlendFactor =
+        vk::BlendFactor::eOneMinusSrcAlpha;
+    colorBlendAttatchment.colorBlendOp = vk::BlendOp::eAdd;
+    colorBlendAttatchment.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+    colorBlendAttatchment.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+    colorBlendAttatchment.alphaBlendOp = vk::BlendOp::eAdd;
+
+    vk::PipelineColorBlendStateCreateInfo colorBlending;
+    colorBlending.logicOpEnable = vk::False;
+    colorBlending.logicOp = vk::LogicOp::eCopy;
+    colorBlending.attachmentCount = 1;
+    colorBlending.pAttachments = &colorBlendAttatchment;
   }
 
   void initvulkan() {
