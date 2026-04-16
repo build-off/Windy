@@ -83,8 +83,8 @@ class Renderer {
 
   // Syncronization
   vk::raii::Semaphore presentCompleteSemaphore = nullptr;
-  vk::raii::Semaphore renderFinishedSemaphore = nullptr;
-  vk::raii::Fence drawFence;
+  std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
+  vk::raii::Fence drawFence = nullptr;
 
   std::vector<const char*> getRequiredInstanceExtensions() {
     uint32_t glfwExtensionCount = 0;
@@ -276,6 +276,7 @@ class Renderer {
     // Enable dynamic rendering from Vulkan 1.3
     auto& v13 = featureChain.get<vk::PhysicalDeviceVulkan13Features>();
     v13.dynamicRendering = VK_TRUE;
+    v13.synchronization2 = VK_TRUE;
     // Enable extended dynamic state from the extension
     auto& ext =
         featureChain.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
@@ -648,8 +649,12 @@ class Renderer {
   void createSyncObjects() {
     presentCompleteSemaphore =
         vk::raii::Semaphore(device, vk::SemaphoreCreateInfo());
-    renderFinishedSemaphore =
-        vk::raii::Semaphore(device, vk::SemaphoreCreateInfo());
+    renderFinishedSemaphores.clear();
+    renderFinishedSemaphores.reserve(swapChainImages.size());
+    for (size_t i = 0; i < swapChainImages.size(); ++i) {
+      renderFinishedSemaphores.emplace_back(device, vk::SemaphoreCreateInfo{});
+    }
+
     vk::FenceCreateInfo fenceCreateInfo;
     fenceCreateInfo.flags = vk::FenceCreateFlagBits::eSignaled;
     drawFence = vk::raii::Fence(device, fenceCreateInfo);
@@ -672,6 +677,7 @@ class Renderer {
       glfwPollEvents();
       drawframe();
     }
+    device.waitIdle();
   };
 
   void drawframe() {
@@ -684,6 +690,8 @@ class Renderer {
         UINT64_MAX, *presentCompleteSemaphore, nullptr);
     recordCommandBuffer(imageIndex);
 
+    auto& render_finished = renderFinishedSemaphores[imageIndex];
+
     vk::PipelineStageFlags waitDestinationStageMask(
         vk::PipelineStageFlagBits::eColorAttachmentOutput);
     vk::SubmitInfo submitInfo;
@@ -693,17 +701,16 @@ class Renderer {
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &*commandBuffer;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &*renderFinishedSemaphore;
+    submitInfo.pSignalSemaphores = &*render_finished;
 
     queue.submit(submitInfo, *drawFence);
     vk::PresentInfoKHR presentInfoKHR;
     presentInfoKHR.waitSemaphoreCount = 1;
-    presentInfoKHR.pWaitSemaphores = &*renderFinishedSemaphore;
+    presentInfoKHR.pWaitSemaphores = &*render_finished;
     presentInfoKHR.swapchainCount = 1;
     presentInfoKHR.pSwapchains = &*swapChain;
     presentInfoKHR.pImageIndices = &imageIndex;
     presentInfoKHR.pResults = nullptr;
-
     result = queue.presentKHR(presentInfoKHR);
   }
 
