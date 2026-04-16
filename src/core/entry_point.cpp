@@ -563,7 +563,7 @@ class Renderer {
     commandPool = vk::raii::CommandPool(device, poolInfo);
   }
 
-  void createCommandBuffer() {
+  void createCommandBuffers() {
     vk::CommandBufferAllocateInfo allocInfo{};
     allocInfo.commandPool = commandPool;
     allocInfo.level = vk::CommandBufferLevel::ePrimary;
@@ -572,7 +572,7 @@ class Renderer {
   }
 
   void recordCommandBuffer(uint32_t imageIndex) {
-    commandBuffers[imageIndex].begin({});
+    commandBuffers[frameInx].begin({});
     transition_image_layout(imageIndex, vk::ImageLayout::eUndefined,
                             vk::ImageLayout::eColorAttachmentOptimal, {},
                             vk::AccessFlagBits2::eColorAttachmentWrite,
@@ -595,17 +595,17 @@ class Renderer {
     renderingInfo.layerCount = 1;
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachments = &attInfo;
-    commandBuffer.beginRendering(renderingInfo);
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-                               *graphicsPipeline);
-    commandBuffer.setViewport(
+    commandBuffers[frameInx].beginRendering(renderingInfo);
+    commandBuffers[frameInx].bindPipeline(vk::PipelineBindPoint::eGraphics,
+                                          *graphicsPipeline);
+    commandBuffers[frameInx].setViewport(
         0,
         vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width),
                      static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
-    commandBuffer.setScissor(0,
-                             vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
-    commandBuffer.draw(3, 1, 0, 0);
-    commandBuffer.endRendering();
+    commandBuffers[frameInx].setScissor(
+        0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
+    commandBuffers[frameInx].draw(3, 1, 0, 0);
+    commandBuffers[frameInx].endRendering();
 
     transition_image_layout(imageIndex,
                             vk::ImageLayout::eColorAttachmentOptimal,
@@ -613,7 +613,7 @@ class Renderer {
                             vk::AccessFlagBits2::eColorAttachmentWrite, {},
                             vk::PipelineStageFlagBits2::eColorAttachmentOutput,
                             vk::PipelineStageFlagBits2::eBottomOfPipe);
-    commandBuffer.end();
+    commandBuffers[frameInx].end();
   }
 
   void transition_image_layout(uint32_t imageInx, vk::ImageLayout old_layout,
@@ -645,7 +645,7 @@ class Renderer {
     dependency_info.imageMemoryBarrierCount = 1;
     dependency_info.pImageMemoryBarriers = &barrier;
 
-    commandBuffer.pipelineBarrier2(dependency_info);
+    commandBuffers[frameInx].pipelineBarrier2(dependency_info);
   }
 
   void createSyncObjects() {
@@ -674,7 +674,7 @@ class Renderer {
     createImageViews();
     createGraphicsPipeline();
     createCommandPool();
-    createCommandBuffer();
+    createCommandBuffers();
     createSyncObjects();
   };
   void loop() {
@@ -723,18 +723,18 @@ class Renderer {
     frameInx = (frameInx + 1) % MAX_FRAMES_IN_FLIGHT;
   }
 
-  void cleanup() {
-    glfwDestroyWindow(window);
-    glfwTerminate();
-  };
+  void cleanup() { glfwDestroyWindow(window); };
 };
 
 int main(int argc, char* argv[]) {
   Windy::Log::Init();
 
   try {
-    Renderer renderer;
-    renderer.run();
+    {
+      Renderer renderer;
+      renderer.run();
+    }
+    glfwTerminate();
   } catch (std::exception& e) {
     WD_CORE_ERROR(e.what());
     std::cerr << e.what();
