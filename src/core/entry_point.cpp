@@ -81,6 +81,11 @@ class Renderer {
   vk::raii::CommandPool commandPool = nullptr;
   vk::raii::CommandBuffer commandBuffer = nullptr;
 
+  // Syncronization
+  vk::raii::Semaphore presentCompleteSemaphore = nullptr;
+  vk::raii::Semaphore renderFinishedSemaphore = nullptr;
+  vk::raii::Fence drawFence;
+
   std::vector<const char*> getRequiredInstanceExtensions() {
     uint32_t glfwExtensionCount = 0;
     auto glfwExtensions =
@@ -640,6 +645,16 @@ class Renderer {
     commandBuffer.pipelineBarrier2(dependency_info);
   }
 
+  void createSyncObjects() {
+    presentCompleteSemaphore =
+        vk::raii::Semaphore(device, vk::SemaphoreCreateInfo());
+    renderFinishedSemaphore =
+        vk::raii::Semaphore(device, vk::SemaphoreCreateInfo());
+    vk::FenceCreateInfo fenceCreateInfo;
+    fenceCreateInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+    drawFence = vk::raii::Fence(device, fenceCreateInfo);
+  }
+
   void initvulkan() {
     createInstance();
     createSurface();
@@ -650,12 +665,16 @@ class Renderer {
     createGraphicsPipeline();
     createCommandPool();
     createCommandBuffer();
+    createSyncObjects();
   };
   void loop() {
     while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();
+      drawframe();
     }
   };
+
+  void drawframe() {}
 
   void cleanup() {
     glfwDestroyWindow(window);
