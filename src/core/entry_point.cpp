@@ -67,6 +67,7 @@ class Renderer {
   vk::raii::PhysicalDevice physicalDevice = nullptr;
   vk::raii::Device device = nullptr;
   vk::PhysicalDeviceFeatures deviceFeatures;
+  uint32_t queueIndex = ~0;
   vk::raii::Queue queue = nullptr;
   vk::raii::SurfaceKHR surface = nullptr;
   vk::Extent2D swapChainExtent;
@@ -75,8 +76,8 @@ class Renderer {
   std::vector<vk::Image> swapChainImages;
   std::vector<vk::raii::ImageView> swapChainImageViews;
   vk::PipelineLayout pipelineLayout = nullptr;
-
   vk::raii::Pipeline graphicsPipeline = nullptr;
+  vk::raii::CommandPool commandPool = nullptr;
 
   std::vector<const char*> getRequiredInstanceExtensions() {
     uint32_t glfwExtensionCount = 0;
@@ -538,6 +539,13 @@ class Renderer {
         pipelineCreteInfoChain.get<vk::GraphicsPipelineCreateInfo>());
   }
 
+  void createCommandPool() {
+    vk::CommandPoolCreateInfo poolInfo;
+    poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+    poolInfo.queueFamilyIndex = queueIndex;
+    commandPool = vk::raii::CommandPool(device, poolInfo);
+  }
+
   void initvulkan() {
     createInstance();
     createSurface();
@@ -546,6 +554,7 @@ class Renderer {
     createSwapChain();
     createImageViews();
     createGraphicsPipeline();
+    createCommandPool();
   };
   void loop() {
     while (!glfwWindowShouldClose(window)) {
