@@ -674,7 +674,29 @@ class Renderer {
     }
   };
 
-  void drawframe() {}
+  void drawframe() {
+    auto fenceres = device.waitForFences(*drawFence, vk::True, UINT64_MAX);
+    if (fenceres != vk::Result::eSuccess) {
+      throw std::runtime_error("failed to wait for fence!");
+    }
+    device.resetFences(*drawFence);
+    auto [result, imageIndex] = swapChain.acquireNextImage(
+        UINT64_MAX, *presentCompleteSemaphore, nullptr);
+    recordCommandBuffer(imageIndex);
+
+    vk::PipelineStageFlags waitDestinationStageMask(
+        vk::PipelineStageFlagBits::eColorAttachmentOutput);
+    vk::SubmitInfo submitInfo;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &*presentCompleteSemaphore;
+    submitInfo.pWaitDstStageMask = &waitDestinationStageMask;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &*commandBuffer;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &*renderFinishedSemaphore;
+
+    queue.submit(submitInfo, *drawFence);
+  }
 
   void cleanup() {
     glfwDestroyWindow(window);
