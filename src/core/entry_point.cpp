@@ -78,6 +78,7 @@ class Renderer {
   vk::raii::PipelineLayout pipelineLayout = nullptr;
   vk::raii::Pipeline graphicsPipeline = nullptr;
   vk::raii::CommandPool commandPool = nullptr;
+  vk::raii::CommandBuffer commandBuffer = nullptr;
 
   std::vector<const char*> getRequiredInstanceExtensions() {
     uint32_t glfwExtensionCount = 0;
@@ -552,6 +553,18 @@ class Renderer {
     commandPool = vk::raii::CommandPool(device, poolInfo);
   }
 
+  void createCommandBuffer() {
+    vk::CommandBufferAllocateInfo allocInfo{};
+    allocInfo.commandPool = commandPool;
+    allocInfo.level = vk::CommandBufferLevel::ePrimary;
+    allocInfo.commandBufferCount = 1;
+
+    commandBuffer =
+        std::move(vk::raii::CommandBuffers(device, allocInfo).front());
+  }
+
+  void recordCommandBuffer(uint32_t imageIndex) { commandBuffer.begin({}); }
+
   void initvulkan() {
     createInstance();
     createSurface();
@@ -561,6 +574,7 @@ class Renderer {
     createImageViews();
     createGraphicsPipeline();
     createCommandPool();
+    createCommandBuffer();
   };
   void loop() {
     while (!glfwWindowShouldClose(window)) {
