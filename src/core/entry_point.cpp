@@ -696,6 +696,15 @@ class Renderer {
     submitInfo.pSignalSemaphores = &*renderFinishedSemaphore;
 
     queue.submit(submitInfo, *drawFence);
+    vk::PresentInfoKHR presentInfoKHR;
+    presentInfoKHR.waitSemaphoreCount = 1;
+    presentInfoKHR.pWaitSemaphores = &*renderFinishedSemaphore;
+    presentInfoKHR.swapchainCount = 1;
+    presentInfoKHR.pSwapchains = &*swapChain;
+    presentInfoKHR.pImageIndices = &imageIndex;
+    presentInfoKHR.pResults = nullptr;
+
+    result = queue.presentKHR(presentInfoKHR);
   }
 
   void cleanup() {
