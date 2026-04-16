@@ -559,12 +559,35 @@ class Renderer {
     allocInfo.commandPool = commandPool;
     allocInfo.level = vk::CommandBufferLevel::ePrimary;
     allocInfo.commandBufferCount = 1;
-
     commandBuffer =
         std::move(vk::raii::CommandBuffers(device, allocInfo).front());
   }
 
-  void recordCommandBuffer(uint32_t imageIndex) { commandBuffer.begin({}); }
+  void recordCommandBuffer(uint32_t imageIndex) {
+    commandBuffer.begin({});
+    transition_image_layout(imageIndex, vk::ImageLayout::eUndefined,
+                            vk::ImageLayout::eColorAttachmentOptimal, {},
+                            vk::AccessFlagBits2::eColorAttachmentWrite,
+                            vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                            vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+
+    vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+    vk::RenderingAttachmentInfo attInfo;
+    attInfo.imageView = swapChainImageViews[imageIndex];
+    attInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+    attInfo.loadOp = vk::AttachmentLoadOp::eClear;
+    attInfo.storeOp = vk::AttachmentStoreOp::eStore;
+    attInfo.clearValue = clearColor;
+
+    vk::RenderingInfo renderingInfo;
+    vk::Rect2D render_area;
+    render_area.offset = vk::Offset2D{0, 0};
+    render_area.extent = swapChainExtent;
+    renderingInfo.renderArea = render_area;
+    renderingInfo.layerCount = 1;
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachments = &attInfo;
+  }
   void transition_image_layout(uint32_t imageInx, vk::ImageLayout old_layout,
                                vk::ImageLayout new_layout,
                                vk::AccessFlags2 src_access_mask,
