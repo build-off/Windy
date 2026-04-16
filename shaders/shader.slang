@@ -19,7 +19,7 @@ struct VertexOutput {
 VertexOutput vertMain(uint vid : SV_VertexID) {
     VertexOutput output;
     output.sv_position = float4(positions[vid], 0.0, 1.0);
-    output.color = colors[i];
+    output.color = colors[vid];
     return output;
 }
 

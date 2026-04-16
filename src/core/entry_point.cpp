@@ -75,7 +75,7 @@ class Renderer {
   vk::raii::SwapchainKHR swapChain = nullptr;
   std::vector<vk::Image> swapChainImages;
   std::vector<vk::raii::ImageView> swapChainImageViews;
-  vk::PipelineLayout pipelineLayout = nullptr;
+  vk::raii::PipelineLayout pipelineLayout = nullptr;
   vk::raii::Pipeline graphicsPipeline = nullptr;
   vk::raii::CommandPool commandPool = nullptr;
 
@@ -252,12 +252,18 @@ class Renderer {
       throw std::runtime_error(
           "Could not find a queue for graphics and present -> terminating");
     }
+    // if there is a valid index for the retreived family assign it
+    queueIndex = queueInx;
 
-    vk::StructureChain<vk::PhysicalDeviceFeatures2,
-                       vk::PhysicalDeviceVulkan12Features,
-                       vk::PhysicalDeviceVulkan13Features,
-                       vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
+    vk::StructureChain<
+        vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
+        vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan13Features,
+        vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
         featureChain;
+    // To allow DrawParameters on the shader
+    auto& v11 = featureChain.get<vk::PhysicalDeviceVulkan11Features>();
+    v11.shaderDrawParameters = VK_TRUE;
+
     // vk::PhysicalDeviceFeatures2 (empty for now)
     auto& features2 = featureChain.get<vk::PhysicalDeviceFeatures2>();
     // Enable dynamic rendering from Vulkan 1.3
@@ -429,7 +435,7 @@ class Renderer {
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.stage = vk::ShaderStageFlagBits::eVertex;
     vertShaderStageInfo.module = shaderModule;
-    vertShaderStageInfo.pName = "vertName";
+    vertShaderStageInfo.pName = "vertMain";
 
     vk::PipelineShaderStageCreateInfo fragShaderStageInfo{};
     fragShaderStageInfo.stage = vk::ShaderStageFlagBits::eFragment;
