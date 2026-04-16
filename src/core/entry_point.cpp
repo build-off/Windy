@@ -1,3 +1,4 @@
+#include <vulkan/vulkan_core.h>
 #include <cstdint>
 #include <limits>
 #include <vector>
@@ -564,6 +565,37 @@ class Renderer {
   }
 
   void recordCommandBuffer(uint32_t imageIndex) { commandBuffer.begin({}); }
+  void transition_image_layout(uint32_t imageInx, vk::ImageLayout old_layout,
+                               vk::ImageLayout new_layout,
+                               vk::AccessFlags2 src_access_mask,
+                               vk::AccessFlags2 dst_access_mask,
+                               vk::PipelineStageFlags2 src_stage_mask,
+                               vk::PipelineStageFlags2 dst_stage_mask) {
+    vk::ImageMemoryBarrier2 barrier;
+    barrier.srcStageMask = src_stage_mask;
+    barrier.srcAccessMask = src_access_mask;
+    barrier.dstStageMask = dst_stage_mask;
+    barrier.dstAccessMask = dst_access_mask;
+    barrier.oldLayout = old_layout;
+    barrier.newLayout = new_layout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = swapChainImages[imageInx];
+    vk::ImageSubresourceRange sub_resource_range;
+    sub_resource_range.aspectMask = vk::ImageAspectFlagBits::eColor;
+    sub_resource_range.baseMipLevel = 0;
+    sub_resource_range.levelCount = 1;
+    sub_resource_range.baseArrayLayer = 0;
+    sub_resource_range.layerCount = 1;
+    barrier.subresourceRange = sub_resource_range;
+
+    vk::DependencyInfo dependency_info;
+    dependency_info.dependencyFlags = {};
+    dependency_info.imageMemoryBarrierCount = 1;
+    dependency_info.pImageMemoryBarriers = &barrier;
+
+    commandBuffer.pipelineBarrier2(dependency_info);
+  }
 
   void initvulkan() {
     createInstance();
