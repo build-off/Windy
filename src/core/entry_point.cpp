@@ -76,6 +76,8 @@ class Renderer {
   std::vector<vk::raii::ImageView> swapChainImageViews;
   vk::PipelineLayout pipelineLayout = nullptr;
 
+  vk::raii::Pipeline graphicsPipeline = nullptr;
+
   std::vector<const char*> getRequiredInstanceExtensions() {
     uint32_t glfwExtensionCount = 0;
     auto glfwExtensions =
@@ -508,7 +510,7 @@ class Renderer {
 
     vk::StructureChain<vk::GraphicsPipelineCreateInfo,
                        vk::PipelineRenderingCreateInfo>
-        pipelineCreteInfoChain;
+        pipelineCreteInfoChain{};
     // Graphics Pipeline
     auto& graphicsPipelineCreateInfo =
         pipelineCreteInfoChain.get<vk::GraphicsPipelineCreateInfo>();
@@ -530,6 +532,10 @@ class Renderer {
     pipelineRenderingCreateInfo.colorAttachmentCount = 1;
     pipelineRenderingCreateInfo.pColorAttachmentFormats =
         &swapChainSurfaceFormat.format;
+
+    graphicsPipeline = vk::raii::Pipeline(
+        device, nullptr,
+        pipelineCreteInfoChain.get<vk::GraphicsPipelineCreateInfo>());
   }
 
   void initvulkan() {
