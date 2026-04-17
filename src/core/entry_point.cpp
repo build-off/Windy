@@ -1,5 +1,6 @@
 #include <vulkan/vulkan_core.h>
 #include <cstdint>
+#include <glm/ext/vector_float3.hpp>
 #include <limits>
 #include <vector>
 #include <fstream>
@@ -72,6 +73,41 @@ class Renderer {
   static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
   uint32_t frameInx = 0;
   bool framebufferResize = false;
+
+  struct Vertex {
+    glm::vec2 pos;
+    glm::vec3 color;
+
+    static vk::VertexInputBindingDescription getBindingDescription() {
+      vk::VertexInputBindingDescription vertexInputBindingDescription;
+      vertexInputBindingDescription.binding = 0;
+      vertexInputBindingDescription.stride = sizeof(Vertex);
+      vertexInputBindingDescription.inputRate = vk::VertexInputRate::eVertex;
+
+      return vertexInputBindingDescription;
+    }
+
+    static std::array<vk::VertexInputAttributeDescription, 2>
+    getAttributeDescriptions() {
+      vk::VertexInputAttributeDescription posDesc;
+      posDesc.location = 0;
+      posDesc.binding = 0;
+      posDesc.format = vk::Format::eR32G32Sfloat;
+      posDesc.offset = offsetof(Vertex, pos);
+      vk::VertexInputAttributeDescription colorDesc;
+      colorDesc.location = 1;
+      colorDesc.binding = 0;
+      colorDesc.format = vk::Format::eR32G32B32Sfloat;
+      colorDesc.offset = offsetof(Vertex, color);
+      return {posDesc, colorDesc};
+    };
+  };
+
+  // combining the vertex data like its position and color, is called
+  // interleaving vertex attributes
+  const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                                        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+                                        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 
   static void framebufferResizeCallback(GLFWwindow* window, int width,
                                         int height) {
@@ -784,7 +820,6 @@ class Renderer {
 
 int main(int argc, char* argv[]) {
   Windy::Log::Init();
-
   try {
     {
       Renderer renderer;
