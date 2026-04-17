@@ -744,6 +744,15 @@ class Renderer {
     presentInfoKHR.pResults = nullptr;
     result = queue.presentKHR(presentInfoKHR);
 
+    if ((result == vk::Result::eSuboptimalKHR) ||
+        (result == vk::Result::eErrorOutOfDateKHR)) {
+      recreateSwapChain();
+    } else {
+      // There are no other success codes than eSuccess; on any error code,
+      // presentKHR already threw an exception.
+      assert(result == vk::Result::eSuccess);
+    }
+
     frameInx = (frameInx + 1) % MAX_FRAMES_IN_FLIGHT;
   }
 
