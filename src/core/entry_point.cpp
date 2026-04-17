@@ -655,13 +655,14 @@ class Renderer {
     commandBuffers[frameInx].beginRendering(renderingInfo);
     commandBuffers[frameInx].bindPipeline(vk::PipelineBindPoint::eGraphics,
                                           *graphicsPipeline);
+    commandBuffers[frameInx].bindVertexBuffers(0, *vertexBuffer, {0});
     commandBuffers[frameInx].setViewport(
         0,
         vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width),
                      static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
     commandBuffers[frameInx].setScissor(
         0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
-    commandBuffers[frameInx].draw(3, 1, 0, 0);
+    commandBuffers[frameInx].draw(vertices.size(), 1, 0, 0);
     commandBuffers[frameInx].endRendering();
 
     transition_image_layout(imageIndex,
