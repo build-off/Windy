@@ -685,6 +685,18 @@ class Renderer {
     device.waitIdle();
   };
 
+  void cleanupSwapChain() {
+    swapChainImageViews.clear();
+    swapChain = nullptr;
+  }
+
+  void recreateSwapChain() {
+    device.waitIdle();
+    cleanupSwapChain();
+    createSwapChain();
+    createImageViews();
+  }
+
   void drawframe() {
     auto fenceres =
         device.waitForFences(*inflightfences[frameInx], vk::True, UINT64_MAX);
@@ -723,7 +735,10 @@ class Renderer {
     frameInx = (frameInx + 1) % MAX_FRAMES_IN_FLIGHT;
   }
 
-  void cleanup() { glfwDestroyWindow(window); };
+  void cleanup() {
+    cleanupSwapChain();
+    glfwDestroyWindow(window);
+  };
 };
 
 int main(int argc, char* argv[]) {
