@@ -109,8 +109,8 @@ class Renderer {
   // combining the vertex data like its position and color, is called
   // interleaving vertex attributes
   const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-                                        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+                                        {{0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}},
+                                        {{-0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}}};
 
   static void framebufferResizeCallback(GLFWwindow* window, int width,
                                         int height) {

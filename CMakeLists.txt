@@ -16,34 +16,35 @@ include(./cmake/include.cmake)
 
 # Compiling shaders
 # TODO: handle executable for other systems
-set(SLANGC_EXECUTABLE vulkan_sdk/1.4.341.1/x86_64/bin/slangc)
+set(SLANGC_EXECUTABLE ${CMAKE_SOURCE_DIR}/vulkan_sdk/1.4.341.1/x86_64/bin/slangc)
 function(add_slang_shader_target TARGET)
-    cmake_parse_arguments("SHADER" "" "" "SOURCES" ${ARGN})
-    set(SHADERS_DIR ${CMAKE_CURRENT_LIST_DIR}/shaders)
-    set(ENTRY_POINTS -entry vertMain -entry fragMain)
-    set(OUTPUT_FILE slang.spv)
+    cmake_parse_arguments(SHADER "" "" "SOURCES" ${ARGN})
 
-    add_custom_command (
-		    OUTPUT ${SHADERS_DIR}
-		    COMMAND ${CMAKE_COMMAND} -E make_directory ${SHADERS_DIR}
-		      -target spirv 
-		      -profile spirv_1_4 
-			    -emit-spirv-directly -fvk-use-entrypoint-name ${ENTRY_POINTS}
-			    -o ${OUTPUT_FILE}
-			  WORKING_DIRECTORY ${SHADERS_DIR}
-			  DEPENDS ${SHADERS_DIR} ${SHADER_SOURCES}
-			  COMMENT "Compiling Slang Shaders"
-			  VERBATIM
+    set(SHADERS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shaders)
+    set(OUTPUT_FILE ${SHADERS_DIR}/slang.spv)
+
+    add_custom_command(
+        OUTPUT ${OUTPUT_FILE}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${SHADERS_DIR}
+        COMMAND ${SLANGC_EXECUTABLE}
+                ${SHADER_SOURCES}
+                -target spirv
+                -profile spirv_1_4
+                -entry vertMain
+                -entry fragMain
+                -emit-spirv-directly
+                -fvk-use-entrypoint-name
+                -o ${OUTPUT_FILE}
+        DEPENDS ${SHADER_SOURCES}
+        COMMENT "Compiling Slang shader -> ${OUTPUT_FILE}"
+        VERBATIM
     )
-    add_custom_command (
-	    OUTPUT ${SHADERS_DIR}/slang.spv
-	    COMMAND ${SLANGC_EXECUTABLE}
-    )
-    add_custom_target (${TARGET} DEPENDS ${SHADERS_DIR}/slang.spv)
+
+    add_custom_target(${TARGET} DEPENDS ${OUTPUT_FILE})
 endfunction()
 
 set(SHADER_SLANG_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/shader.slang
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaders/shader.slang
 )
 add_slang_shader_target(shaders SOURCES ${SHADER_SLANG_SOURCES})
 
