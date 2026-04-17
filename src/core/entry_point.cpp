@@ -66,6 +66,7 @@ class Renderer {
   std::vector<vk::raii::CommandBuffer> commandBuffers;
 
   vk::raii::Buffer vertexBuffer = nullptr;
+  vk::raii::DeviceMemory vertexBufferMemory = nullptr;
 
   // Syncronization
   std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
@@ -721,12 +722,40 @@ class Renderer {
     }
   }
 
+  // getting the correct memory to assign to buffers
+  uint32_t find_memory_type(uint32_t typeFilter,
+                            vk::MemoryPropertyFlags properties) {
+    vk::PhysicalDeviceMemoryProperties memProperties =
+        physicalDevice.getMemoryProperties();
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i) {
+      if ((typeFilter & (1 << i)) &&
+          (memProperties.memoryTypes[i].propertyFlags & properties) ==
+              properties) {
+        return i;
+      }
+    }
+    throw std::runtime_error("failed to find suitable memory type!");
+  }
+
   void createVertexBuffer() {
     vk::BufferCreateInfo bufferInfo;
     bufferInfo.size = sizeof(vertices[0]) * vertices.size();
     bufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer;
     bufferInfo.sharingMode = vk::SharingMode::eExclusive;
     vertexBuffer = vk::raii::Buffer(device, bufferInfo);
+
+    // Buffer is constructed but not is missing assigned memory,
+    // querieing memory requirements
+    vk::MemoryRequirements memRequirements =
+        vertexBuffer.getMemoryRequirements();
+
+    vk::MemoryAllocateInfo memoryAllocateInfo;
+    memoryAllocateInfo.allocationSize = memRequirements.size;
+    memoryAllocateInfo.memoryTypeIndex =
+        find_memory_type(memRequirements.memoryTypeBits,
+                         vk::MemoryPropertyFlagBits::eHostVisible |
+                             vk::MemoryPropertyFlagBits::eHostCoherent);
+    vertexBufferMemory = vk::raii::DeviceMemory(device, memoryAllocateInfo);
   }
 
   void initvulkan() {
