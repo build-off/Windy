@@ -32,6 +32,7 @@ const bool enableValidationLayers = true;
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 uint32_t frameInx = 0;
+bool framebufferResize = false;
 
 static void glfw_error_callback(int error, const char* description) {
   WD_CORE_ERROR(description);
@@ -703,7 +704,6 @@ class Renderer {
     if (fenceres != vk::Result::eSuccess) {
       throw std::runtime_error("failed to wait for fence!");
     }
-    device.resetFences(*inflightfences[frameInx]);
     auto [result, imageIndex] = swapChain.acquireNextImage(
         UINT64_MAX, *presentCompleteSemaphores[frameInx], nullptr);
 
@@ -717,6 +717,9 @@ class Renderer {
       assert(result == vk::Result::eTimeout || result == vk::Result::eNotReady);
       throw std::runtime_error("failed to acquire swapchain image");
     }
+
+    // only reset if work is going to be submitted, to avoid deadlock
+    device.resetFences(*inflightfences[frameInx]);
 
     commandBuffers[frameInx].reset();
     recordCommandBuffer(imageIndex);
@@ -745,14 +748,13 @@ class Renderer {
     result = queue.presentKHR(presentInfoKHR);
 
     if ((result == vk::Result::eSuboptimalKHR) ||
-        (result == vk::Result::eErrorOutOfDateKHR)) {
+        (result == vk::Result::eErrorOutOfDateKHR || framebufferResize)) {
       recreateSwapChain();
     } else {
       // There are no other success codes than eSuccess; on any error code,
       // presentKHR already threw an exception.
       assert(result == vk::Result::eSuccess);
     }
-
     frameInx = (frameInx + 1) % MAX_FRAMES_IN_FLIGHT;
   }
 
