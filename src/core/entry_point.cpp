@@ -30,27 +30,6 @@ const bool enableValidationLayers = true;
 
 #include "log.h"
 
-constexpr int MAX_FRAMES_IN_FLIGHT = 2;
-uint32_t frameInx = 0;
-bool framebufferResize = false;
-
-static void glfw_error_callback(int error, const char* description) {
-  WD_CORE_ERROR(description);
-  fprintf(stderr, "GLFW Error %d: %s\n", error, description);
-}
-
-static std::vector<char> read_file(const std::string& filename) {
-  std::ifstream file(filename, std::ios::ate | std::ios::binary);
-  if (!file.is_open()) {
-    throw std::runtime_error("failed to open file!");
-  }
-  std::vector<char> buffer(file.tellg());
-  file.seekg(0, std::ios::beg);
-  file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
-  file.close();
-  return buffer;
-}
-
 class Renderer {
  public:
   void run() {
@@ -89,6 +68,33 @@ class Renderer {
   std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
   std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
   std::vector<vk::raii::Fence> inflightfences;
+
+  static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+  uint32_t frameInx = 0;
+  bool framebufferResize = false;
+
+  static void framebufferResizeCallback(GLFWwindow* window, int width,
+                                        int height) {
+    auto app = reinterpret_cast<Renderer*>(glfwGetWindowUserPointer(window));
+    app->framebufferResize = true;
+  }
+
+  static void glfw_error_callback(int error, const char* description) {
+    WD_CORE_ERROR(description);
+    fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+  }
+
+  static std::vector<char> read_file(const std::string& filename) {
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    if (!file.is_open()) {
+      throw std::runtime_error("failed to open file!");
+    }
+    std::vector<char> buffer(file.tellg());
+    file.seekg(0, std::ios::beg);
+    file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+    file.close();
+    return buffer;
+  }
 
   std::vector<const char*> getRequiredInstanceExtensions() {
     uint32_t glfwExtensionCount = 0;
@@ -242,6 +248,9 @@ class Renderer {
     if (!window) {
       throw std::runtime_error("Failed to create GLFW window");
     }
+
+    glfwSetWindowUserPointer(window, this);
+    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
   }
 
   void createLogicalDevice() {
@@ -749,6 +758,7 @@ class Renderer {
 
     if ((result == vk::Result::eSuboptimalKHR) ||
         (result == vk::Result::eErrorOutOfDateKHR || framebufferResize)) {
+      framebufferResize = false;
       recreateSwapChain();
     } else {
       // There are no other success codes than eSuccess; on any error code,
