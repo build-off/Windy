@@ -65,6 +65,8 @@ class Renderer {
   vk::raii::CommandPool commandPool = nullptr;
   std::vector<vk::raii::CommandBuffer> commandBuffers;
 
+  vk::raii::Buffer vertexBuffer = nullptr;
+
   // Syncronization
   std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
   std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
@@ -719,6 +721,14 @@ class Renderer {
     }
   }
 
+  void createVertexBuffer() {
+    vk::BufferCreateInfo bufferInfo;
+    bufferInfo.size = sizeof(vertices[0]) * vertices.size();
+    bufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer;
+    bufferInfo.sharingMode = vk::SharingMode::eExclusive;
+    vertexBuffer = vk::raii::Buffer(device, bufferInfo);
+  }
+
   void initvulkan() {
     createInstance();
     createSurface();
@@ -728,6 +738,7 @@ class Renderer {
     createImageViews();
     createGraphicsPipeline();
     createCommandPool();
+    createVertexBuffer();
     createCommandBuffers();
     createSyncObjects();
   };
