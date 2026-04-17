@@ -706,6 +706,18 @@ class Renderer {
     device.resetFences(*inflightfences[frameInx]);
     auto [result, imageIndex] = swapChain.acquireNextImage(
         UINT64_MAX, *presentCompleteSemaphores[frameInx], nullptr);
+
+    if (result == vk::Result::eErrorOutOfDateKHR) {
+      recreateSwapChain();
+      return;
+    }
+
+    if (result != vk::Result::eSuccess &&
+        result != vk::Result::eSuboptimalKHR) {
+      assert(result == vk::Result::eTimeout || result == vk::Result::eNotReady);
+      throw std::runtime_error("failed to acquire swapchain image");
+    }
+
     commandBuffers[frameInx].reset();
     recordCommandBuffer(imageIndex);
 
