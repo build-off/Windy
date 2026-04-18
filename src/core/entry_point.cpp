@@ -1,6 +1,7 @@
 #include <vulkan/vulkan_core.h>
 #include <cstdint>
 #include <cstring>
+#include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <limits>
 #include <vector>
@@ -61,6 +62,7 @@ class Renderer {
   vk::raii::SwapchainKHR swapChain = nullptr;
   std::vector<vk::Image> swapChainImages;
   std::vector<vk::raii::ImageView> swapChainImageViews;
+  vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
   vk::raii::PipelineLayout pipelineLayout = nullptr;
   vk::raii::Pipeline graphicsPipeline = nullptr;
   vk::raii::CommandPool commandPool = nullptr;
@@ -70,6 +72,10 @@ class Renderer {
   vk::raii::DeviceMemory vertexBufferMemory = nullptr;
   vk::raii::Buffer indexBuffer = nullptr;
   vk::raii::DeviceMemory indexBufferMemory = nullptr;
+
+  std::vector<vk::raii::Buffer> uniformBuffers;
+  std::vector<vk::raii::DeviceMemory> uniformBuffersMemory;
+  std::vector<void*> uniformBuffersMapped;
 
   // Syncronization
   std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
@@ -117,6 +123,12 @@ class Renderer {
                                         {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
 
   const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
+
+  struct UniformBufferObject {
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+  };
 
   static void framebufferResizeCallback(GLFWwindow* window, int width,
                                         int height) {
@@ -581,7 +593,8 @@ class Renderer {
 
     // Pipeline layout
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
-    pipelineLayoutInfo.setLayoutCount = 0;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &*descriptorSetLayout;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayout = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 
@@ -789,6 +802,26 @@ class Renderer {
     buffer.bindMemory(*bufferMemory, 0);
   }
 
+  void createUniformBuffers() {
+    uniformBuffers.clear();
+    uniformBuffersMemory.clear();
+    uniformBuffersMapped.clear();
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+      vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+      vk::raii::Buffer buffer({});
+      vk::raii::DeviceMemory bufferMem({});
+      createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer,
+                   vk::MemoryPropertyFlagBits::eHostVisible |
+                       vk::MemoryPropertyFlagBits::eHostCoherent,
+                   buffer, bufferMem);
+      uniformBuffers.emplace_back(std::move(buffer));
+      uniformBuffersMemory.emplace_back(std::move(bufferMem));
+      uniformBuffersMapped.emplace_back(
+          uniformBuffersMemory[i].mapMemory(0, bufferSize));
+    }
+  }
+
   void createIndexBuffer() {
     vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
     vk::raii::Buffer stagingBuffer({});
@@ -852,6 +885,16 @@ class Renderer {
     copyBuffer(stagingBuffer, vertexBuffer, stagingInfo.size);
   }
 
+  void createDescriptorSetLayout() {
+    vk::DescriptorSetLayoutBinding uboLayoutBinding(
+        0, vk::DescriptorType::eUniformBuffer, 1,
+        vk::ShaderStageFlagBits::eVertex, nullptr);
+    vk::DescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding;
+    descriptorSetLayout = vk::raii::DescriptorSetLayout(device, layoutInfo);
+  }
+
   void initvulkan() {
     createInstance();
     createSurface();
@@ -859,10 +902,12 @@ class Renderer {
     createLogicalDevice();
     createSwapChain();
     createImageViews();
+    createDescriptorSetLayout();
     createGraphicsPipeline();
     createCommandPool();
     createVertexBuffer();
     createIndexBuffer();
+    createUniformBuffers();
     createCommandBuffers();
     createSyncObjects();
   };
