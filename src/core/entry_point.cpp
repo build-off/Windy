@@ -68,6 +68,8 @@ class Renderer {
 
   vk::raii::Buffer vertexBuffer = nullptr;
   vk::raii::DeviceMemory vertexBufferMemory = nullptr;
+  vk::raii::Buffer indexBuffer = nullptr;
+  vk::raii::DeviceMemory indexBufferMemory = nullptr;
 
   // Syncronization
   std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
@@ -109,9 +111,12 @@ class Renderer {
 
   // combining the vertex data like its position and color, is called
   // interleaving vertex attributes
-  const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
-                                        {{0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
-                                        {{-0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}}};
+  const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                                        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+                                        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+                                        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+
+  const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
   static void framebufferResizeCallback(GLFWwindow* window, int width,
                                         int height) {
@@ -782,6 +787,27 @@ class Renderer {
     buffer.bindMemory(*bufferMemory, 0);
   }
 
+  void createIndexBuffer() {
+    vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+    vk::raii::Buffer stagingBuffer({});
+    vk::raii::DeviceMemory stagingBufferMemory({});
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+                 vk::MemoryPropertyFlagBits::eHostVisible |
+                     vk::MemoryPropertyFlagBits::eHostCoherent,
+                 stagingBuffer, stagingBufferMemory);
+
+    void* data = stagingBufferMemory.mapMemory(0, bufferSize);
+    memcpy(data, indices.data(), (size_t)bufferSize);
+    stagingBufferMemory.unmapMemory();
+
+    createBuffer(bufferSize,
+                 vk::BufferUsageFlagBits::eTransferDst |
+                     vk::BufferUsageFlagBits::eIndexBuffer,
+                 vk::MemoryPropertyFlagBits::eDeviceLocal, indexBuffer,
+                 indexBufferMemory);
+    copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+  }
+
   void createVertexBuffer() {
     vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
     vk::BufferCreateInfo stagingInfo{};
@@ -834,6 +860,7 @@ class Renderer {
     createGraphicsPipeline();
     createCommandPool();
     createVertexBuffer();
+    createIndexBuffer();
     createCommandBuffers();
     createSyncObjects();
   };
