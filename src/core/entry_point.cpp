@@ -1,5 +1,6 @@
 #include <vulkan/vulkan_core.h>
 #include <cstdint>
+#include <cstring>
 #include <glm/ext/vector_float3.hpp>
 #include <limits>
 #include <vector>
@@ -108,9 +109,9 @@ class Renderer {
 
   // combining the vertex data like its position and color, is called
   // interleaving vertex attributes
-  const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                        {{0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}},
-                                        {{-0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}}};
+  const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+                                        {{0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
+                                        {{-0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}}};
 
   static void framebufferResizeCallback(GLFWwindow* window, int width,
                                         int height) {
@@ -738,30 +739,32 @@ class Renderer {
     throw std::runtime_error("failed to find suitable memory type!");
   }
 
-  void createVertexBuffer() {
-    vk::BufferCreateInfo bufferInfo;
-    bufferInfo.size = sizeof(vertices[0]) * vertices.size();
-    bufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer;
+  void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
+                    vk::MemoryPropertyFlags properties,
+                    vk::raii::Buffer& buffer,
+                    vk::raii::DeviceMemory& bufferMemory) {
+    vk::BufferCreateInfo bufferInfo{};
+    bufferInfo.size = size;
+    bufferInfo.usage = usage;
     bufferInfo.sharingMode = vk::SharingMode::eExclusive;
-    vertexBuffer = vk::raii::Buffer(device, bufferInfo);
+    buffer = vk::raii::Buffer(device, bufferInfo);
+    vk::MemoryRequirements memRequirements = buffer.getMemoryRequirements();
+    vk::MemoryAllocateInfo allocInfo{};
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex =
+        find_memory_type(memRequirements.memoryTypeBits, properties);
+    bufferMemory = vk::raii::DeviceMemory(device, allocInfo);
+    buffer.bindMemory(*bufferMemory, 0);
+  }
 
-    // Buffer is constructed but not is missing assigned memory,
-    // querieing memory requirements
-    vk::MemoryRequirements memRequirements =
-        vertexBuffer.getMemoryRequirements();
-
-    vk::MemoryAllocateInfo memoryAllocateInfo;
-    memoryAllocateInfo.allocationSize = memRequirements.size;
-    memoryAllocateInfo.memoryTypeIndex =
-        find_memory_type(memRequirements.memoryTypeBits,
-                         vk::MemoryPropertyFlagBits::eHostVisible |
-                             vk::MemoryPropertyFlagBits::eHostCoherent);
-    vertexBufferMemory = vk::raii::DeviceMemory(device, memoryAllocateInfo);
-    vertexBuffer.bindMemory(*vertexBufferMemory, 0);
-
-    // copy the vertex data to the vertex buffer
-    void* data = vertexBufferMemory.mapMemory(0, bufferInfo.size);
-    memcpy(data, vertices.data(), bufferInfo.size);
+  void createVertexBuffer() {
+    vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+    createBuffer(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer,
+                 vk::MemoryPropertyFlagBits::eHostVisible |
+                     vk::MemoryPropertyFlagBits::eHostCoherent,
+                 vertexBuffer, vertexBufferMemory);
+    void* data = vertexBufferMemory.mapMemory(0, bufferSize);
+    memcpy(data, vertices.data(), (size_t)bufferSize);
     vertexBufferMemory.unmapMemory();
   }
 
