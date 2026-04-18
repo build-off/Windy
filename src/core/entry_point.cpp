@@ -1,11 +1,14 @@
 #include <vulkan/vulkan_core.h>
 #include <cstdint>
 #include <cstring>
-#include <glm/ext/matrix_float4x4.hpp>
-#include <glm/ext/vector_float3.hpp>
+#include <glm/ext/matrix_transform.hpp>
 #include <limits>
 #include <vector>
 #include <fstream>
+#include <chrono>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "vulkan/vulkan.hpp"
 
@@ -939,6 +942,26 @@ class Renderer {
     createImageViews();
   }
 
+  void updateUniformBuffer(uint32_t currentImage) {
+    static auto start_time = std::chrono::high_resolution_clock::now();
+    auto current_time = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(
+                     current_time - start_time)
+                     .count();
+
+    UniformBufferObject ubo{};
+    ubo.model = rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
+                       glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+                      glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.proj = glm::perspective(glm::radians(45.0f),
+                                static_cast<float>(swapChainExtent.width) /
+                                    static_cast<float>(swapChainExtent.height),
+                                0.1f, 10.0f);
+    ubo.proj[1][1] *= -1;
+    memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+  }
+
   void drawframe() {
     auto fenceres =
         device.waitForFences(*inflightfences[frameInx], vk::True, UINT64_MAX);
@@ -959,6 +982,7 @@ class Renderer {
       throw std::runtime_error("failed to acquire swapchain image");
     }
 
+    updateUniformBuffer(frameInx);
     // only reset if work is going to be submitted, to avoid deadlock
     device.resetFences(*inflightfences[frameInx]);
 
