@@ -739,6 +739,9 @@ class Renderer {
     throw std::runtime_error("failed to find suitable memory type!");
   }
 
+  void copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer,
+                  vk::DeviceSize size) {}
+
   void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                     vk::MemoryPropertyFlags properties,
                     vk::raii::Buffer& buffer,
@@ -759,13 +762,44 @@ class Renderer {
 
   void createVertexBuffer() {
     vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-    createBuffer(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer,
-                 vk::MemoryPropertyFlagBits::eHostVisible |
-                     vk::MemoryPropertyFlagBits::eHostCoherent,
-                 vertexBuffer, vertexBufferMemory);
-    void* data = vertexBufferMemory.mapMemory(0, bufferSize);
-    memcpy(data, vertices.data(), (size_t)bufferSize);
-    vertexBufferMemory.unmapMemory();
+    vk::BufferCreateInfo stagingInfo{};
+    stagingInfo.size = bufferSize;
+    stagingInfo.usage = vk::BufferUsageFlagBits::eTransferSrc;
+    stagingInfo.sharingMode = vk::SharingMode::eExclusive;
+
+    vk::raii::Buffer stagingBuffer(device, stagingInfo);
+    vk::MemoryRequirements memRequirementsStaging =
+        stagingBuffer.getMemoryRequirements();
+    vk::MemoryAllocateInfo memoryAllocateInfoStaging{};
+    memoryAllocateInfoStaging.allocationSize = memRequirementsStaging.size;
+    memoryAllocateInfoStaging.memoryTypeIndex =
+        find_memory_type(memRequirementsStaging.memoryTypeBits,
+                         vk::MemoryPropertyFlagBits::eHostVisible |
+                             vk::MemoryPropertyFlagBits::eHostCoherent);
+    vk::raii::DeviceMemory stagingBufferMemory(device,
+                                               memoryAllocateInfoStaging);
+    stagingBuffer.bindMemory(stagingBufferMemory, 0);
+    void* dataStaging = stagingBufferMemory.mapMemory(0, stagingInfo.size);
+    memcpy(dataStaging, vertices.data(), stagingInfo.size);
+    stagingBufferMemory.unmapMemory();
+
+    vk::BufferCreateInfo bufferInfo{};
+    bufferInfo.size = bufferSize;
+    bufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer |
+                       vk::BufferUsageFlagBits::eTransferDst;
+    bufferInfo.sharingMode = vk::SharingMode::eExclusive;
+    vertexBuffer = vk::raii::Buffer(device, bufferInfo);
+
+    vk::MemoryRequirements memRequirements =
+        vertexBuffer.getMemoryRequirements();
+    vk::MemoryAllocateInfo memoryAllocateInfo{};
+    memoryAllocateInfo.allocationSize = memRequirements.size;
+    memoryAllocateInfo.memoryTypeIndex =
+        find_memory_type(memRequirementsStaging.memoryTypeBits,
+                         vk::MemoryPropertyFlagBits::eDeviceLocal);
+    vertexBufferMemory = vk::raii::DeviceMemory(device, memoryAllocateInfo);
+    vertexBuffer.bindMemory(*vertexBufferMemory, 0);
+    copyBuffer(stagingBuffer, vertexBuffer, stagingInfo.size);
   }
 
   void initvulkan() {
