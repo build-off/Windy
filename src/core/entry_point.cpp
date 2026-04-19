@@ -689,6 +689,12 @@ class Renderer {
                      static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
     commandBuffers[frameInx].setScissor(
         0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
+
+    // binding the descriptor sets
+    commandBuffers[frameInx].bindDescriptorSets(
+        vk::PipelineBindPoint::eGraphics, pipelineLayout, 0,
+        *descriptorSets[frameInx], nullptr);
+
     commandBuffers[frameInx].drawIndexed(indices.size(), 1, 0, 0, 0);
     commandBuffers[frameInx].endRendering();
 
