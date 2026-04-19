@@ -80,6 +80,8 @@ class Renderer {
   std::vector<vk::raii::DeviceMemory> uniformBuffersMemory;
   std::vector<void*> uniformBuffersMapped;
 
+  vk::raii::DescriptorPool descriptorPool = nullptr;
+
   // Syncronization
   std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
   std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
@@ -898,6 +900,17 @@ class Renderer {
     descriptorSetLayout = vk::raii::DescriptorSetLayout(device, layoutInfo);
   }
 
+  void createDescriptorPool() {
+    vk::DescriptorPoolSize poolSize(vk::DescriptorType::eUniformBuffer,
+                                    MAX_FRAMES_IN_FLIGHT);
+    vk::DescriptorPoolCreateInfo poolInfo{};
+    poolInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+    poolInfo.maxSets = MAX_FRAMES_IN_FLIGHT;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+    descriptorPool = vk::raii::DescriptorPool(device, poolInfo);
+  }
+
   void initvulkan() {
     createInstance();
     createSurface();
@@ -911,6 +924,7 @@ class Renderer {
     createVertexBuffer();
     createIndexBuffer();
     createUniformBuffers();
+    createDescriptorPool();
     createCommandBuffers();
     createSyncObjects();
   };
