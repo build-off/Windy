@@ -6,7 +6,7 @@ struct VertexInput {
 struct UniformBuffer {
     float4x4 model;
     float4x4 view;
-    float4x4x proj;
+    float4x4 proj;
 };
 ConstantBuffer<UniformBuffer> ubo;
 
