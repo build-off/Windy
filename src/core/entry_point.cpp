@@ -282,8 +282,10 @@ class Renderer {
             .template get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>()
             .extendedDynamicState;
 
+    deviceFeatures = physicalDevice.getFeatures();
     return supportsVulkan1_3 && supportsGraphics &&
-           supportsAllRequiredExtensions && supportsRequiredFeatures;
+           supportsAllRequiredExtensions && supportsRequiredFeatures &&
+           deviceFeatures.samplerAnisotropy;
   }
 
   // Select the GPU to use, although multiple can be used
