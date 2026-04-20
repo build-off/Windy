@@ -1,4 +1,3 @@
-#include <vulkan/vulkan_core.h>
 #include <cstdint>
 #include <cstring>
 #include <limits>
@@ -18,8 +17,6 @@
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
-
-#include "vulkan/vulkan.hpp"
 
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
 #include <vulkan/vulkan_raii.hpp>
@@ -1266,8 +1263,9 @@ class Renderer {
     copyBufferToImage(stagingBuffer, textureImage,
                       static_cast<uint32_t>(texWidth),
                       static_cast<uint32_t>(texHeight));
-    transitionImageLayout(textureImage, vk::ImageLayout::eTransferDstOptimal,
-                          vk::ImageLayout::eShaderReadOnlyOptimal, mipLevels);
+    // transitionImageLayout(textureImage, vk::ImageLayout::eTransferDstOptimal,
+    //                       vk::ImageLayout::eShaderReadOnlyOptimal,
+    //                       mipLevels);
     generateMipMaps(textureImage, vk::Format::eR8G8B8A8Srgb, texWidth,
                     texHeight, mipLevels);
   }
