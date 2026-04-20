@@ -92,6 +92,7 @@ class Renderer {
 
   vk::raii::Image textureImage = nullptr;
   vk::raii::DeviceMemory textureImageMemory = nullptr;
+  vk::raii::ImageView textureImageView = nullptr;
 
   static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
   uint32_t frameInx = 0;
@@ -491,16 +492,24 @@ class Renderer {
     surface = vk::raii::SurfaceKHR(instance, _surface);
   }
 
+  vk::raii::ImageView createImageView(vk::raii::Image& image,
+                                      vk::Format format) {
+    vk::ImageViewCreateInfo viewInfo{};
+    viewInfo.image = image;
+    viewInfo.viewType = vk::ImageViewType::e2D;
+    viewInfo.format = format;
+    viewInfo.subresourceRange =
+        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+    return vk::raii::ImageView(device, viewInfo);
+  }
+
   void createImageViews() {
     assert(swapChainImageViews.empty());
     vk::ImageViewCreateInfo imageViewCreateInfo{};
     imageViewCreateInfo.viewType = vk::ImageViewType::e2D;
     imageViewCreateInfo.format = swapChainSurfaceFormat.format;
-    imageViewCreateInfo.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0,
-                                            1, 0, 1};
-    imageViewCreateInfo.components = {
-        vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity,
-        vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity};
+    imageViewCreateInfo.subresourceRange =
+        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
 
     for (auto& image : swapChainImages) {
       imageViewCreateInfo.image = image;
@@ -1071,6 +1080,10 @@ class Renderer {
                           vk::ImageLayout::eShaderReadOnlyOptimal);
   }
 
+  void createTextureImageView() {
+    textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb);
+  }
+
   void initvulkan() {
     createInstance();
     createSurface();
@@ -1082,6 +1095,7 @@ class Renderer {
     createGraphicsPipeline();
     createCommandPool();
     createTextureImage();
+    createTextureImageView();
     createVertexBuffer();
     createIndexBuffer();
     createUniformBuffers();
