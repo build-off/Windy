@@ -807,6 +807,24 @@ class Renderer {
     endSingleTimeCommands(commandCopyBuffer);
   }
 
+  void copyBufferToImage(const vk::raii::Buffer& buffer, vk::raii::Image& image,
+                         uint32_t width, uint32_t height) {
+    vk::raii::CommandBuffer commandBuffer = beginSingleTimeCommands();
+    vk::BufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+
+    region.imageSubresource =
+        vk::ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1};
+    region.imageOffset = vk::Offset3D{0, 0, 0};
+    region.imageExtent = vk::Extent3D{width, height, 1};
+    commandBuffer.copyBufferToImage(
+        buffer, image, vk::ImageLayout::eTransferDstOptimal, {region});
+
+    endSingleTimeCommands(commandBuffer);
+  }
+
   void transitionImageLayout(const vk::raii::Image& image,
                              vk::ImageLayout oldLayout,
                              vk::ImageLayout newLayout) {
@@ -818,6 +836,10 @@ class Renderer {
     vk::ImageSubresourceRange subRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0,
                                        1};
     barrier.subresourceRange = subRange;
+
+    vk::PipelineStageFlags sourceStage;
+    vk::PipelineStageFlags destinationStage;
+
     commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, {},
                                   nullptr, barrier);
 
