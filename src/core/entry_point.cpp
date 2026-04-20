@@ -1,6 +1,7 @@
 #include <whdz.h>
 #include <stb/stb_image.h>
 #include <tiny_obj_loader.h>
+#include <vulkan/vulkan_raii.hpp>
 
 #include "log.h"
 #include "vulkan/vulkan.hpp"
@@ -135,6 +136,9 @@ class Renderer {
 
   // Multisampling
   vk::SampleCountFlagBits msaaSamples = vk::SampleCountFlagBits::e1;
+  vk::raii::Image colorImage = nullptr;
+  vk::raii::DeviceMemory colorImageMemory = nullptr;
+  vk::raii::ImageView colorImageView = nullptr;
 
   static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
   uint32_t frameInx = 0;
@@ -639,7 +643,7 @@ class Renderer {
 
     // Multisampling
     vk::PipelineMultisampleStateCreateInfo multisampling{};
-    multisampling.rasterizationSamples = vk::SampleCountFlagBits::e1;
+    multisampling.rasterizationSamples = msaaSamples;
     multisampling.sampleShadingEnable = vk::False;
 
     // Color blending -> using bitwise operations
@@ -751,19 +755,22 @@ class Renderer {
 
     vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
     vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
-    vk::RenderingAttachmentInfo attInfo;
-    attInfo.imageView = swapChainImageViews[imageIndex];
-    attInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
-    attInfo.loadOp = vk::AttachmentLoadOp::eClear;
-    attInfo.storeOp = vk::AttachmentStoreOp::eStore;
-    attInfo.clearValue = clearColor;
 
-    vk::RenderingAttachmentInfo depthAttatchmentInfo{};
-    depthAttatchmentInfo.imageView = depthImageView;
-    depthAttatchmentInfo.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal;
-    depthAttatchmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
-    depthAttatchmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;
-    depthAttatchmentInfo.clearValue = clearDepth;
+    vk::RenderingAttachmentInfo colorAttatchment;
+    colorAttatchment.imageView = swapChainImageViews[imageIndex];
+    colorAttatchment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+    colorAttatchment.resolveMode = vk::ResolveModeFlagBits::eAverage;
+    colorAttatchment.resolveImageView = swapChainImageViews[imageIndex];
+    colorAttatchment.loadOp = vk::AttachmentLoadOp::eClear;
+    colorAttatchment.storeOp = vk::AttachmentStoreOp::eStore;
+    colorAttatchment.clearValue = clearColor;
+
+    vk::RenderingAttachmentInfo depthAttatchment{};
+    depthAttatchment.imageView = depthImageView;
+    depthAttatchment.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal;
+    depthAttatchment.loadOp = vk::AttachmentLoadOp::eClear;
+    depthAttatchment.storeOp = vk::AttachmentStoreOp::eDontCare;
+    depthAttatchment.clearValue = clearDepth;
 
     vk::RenderingInfo renderingInfo;
     vk::Rect2D render_area;
@@ -772,8 +779,8 @@ class Renderer {
     renderingInfo.renderArea = render_area;
     renderingInfo.layerCount = 1;
     renderingInfo.colorAttachmentCount = 1;
-    renderingInfo.pColorAttachments = &attInfo;
-    renderingInfo.pDepthAttachment = &depthAttatchmentInfo;
+    renderingInfo.pColorAttachments = &colorAttatchment;
+    renderingInfo.pDepthAttachment = &depthAttatchment;
     commandBuffers[frameInx].beginRendering(renderingInfo);
     commandBuffers[frameInx].bindPipeline(vk::PipelineBindPoint::eGraphics,
                                           *graphicsPipeline);
@@ -1134,8 +1141,8 @@ class Renderer {
   }
 
   void createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
-                   vk::Format format, vk::ImageTiling tiling,
-                   vk::ImageUsageFlags usage,
+                   vk::SampleCountFlagBits numSamples, vk::Format format,
+                   vk::ImageTiling tiling, vk::ImageUsageFlags usage,
                    vk::MemoryPropertyFlags properties, vk::raii::Image& image,
                    vk::raii::DeviceMemory& imageMemory) {
     vk::ImageCreateInfo imageInfo{};
@@ -1145,7 +1152,7 @@ class Renderer {
     imageInfo.extent = extenxt;
     imageInfo.mipLevels = mipLevels;
     imageInfo.arrayLayers = 1;
-    imageInfo.samples = vk::SampleCountFlagBits::e1;
+    imageInfo.samples = numSamples;
     imageInfo.tiling = tiling;
     imageInfo.usage = usage;
     imageInfo.sharingMode = vk::SharingMode::eExclusive;
@@ -1261,8 +1268,8 @@ class Renderer {
     stagingBufferMemory.unmapMemory();
     stbi_image_free(pixels);
 
-    createImage(texWidth, texHeight, mipLevels, vk::Format::eR8G8B8A8Srgb,
-                vk::ImageTiling::eOptimal,
+    createImage(texWidth, texHeight, mipLevels, vk::SampleCountFlagBits::e1,
+                vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal,
                 vk::ImageUsageFlagBits::eTransferSrc |
                     vk::ImageUsageFlagBits::eTransferDst |
                     vk::ImageUsageFlagBits::eSampled,
@@ -1340,8 +1347,8 @@ class Renderer {
 
   void createDepthResources() {
     vk::Format depthFormat = findDepthFormat();
-    createImage(swapChainExtent.width, swapChainExtent.height, 1, depthFormat,
-                vk::ImageTiling::eOptimal,
+    createImage(swapChainExtent.width, swapChainExtent.height, 1, msaaSamples,
+                depthFormat, vk::ImageTiling::eOptimal,
                 vk::ImageUsageFlagBits::eDepthStencilAttachment,
                 vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage,
                 depthImageMemory);
@@ -1386,16 +1393,28 @@ class Renderer {
     }
   }
 
+  void createColorResources() {
+    vk::Format colorFormat = swapChainSurfaceFormat.format;
+    createImage(swapChainExtent.width, swapChainExtent.height, 1, msaaSamples,
+                colorFormat, vk::ImageTiling::eOptimal,
+                vk::ImageUsageFlagBits::eTransientAttachment |
+                    vk::ImageUsageFlagBits::eColorAttachment,
+                vk::MemoryPropertyFlagBits::eDeviceLocal, colorImage,
+                colorImageMemory);
+  }
+
   void initvulkan() {
     createInstance();
     createSurface();
     pickPhysicalDevice();
+    msaaSamples = getMaxUsableSampleCount();
     createLogicalDevice();
     createSwapChain();
     createImageViews();
     createDescriptorSetLayout();
     createGraphicsPipeline();
     createCommandPool();
+    createColorResources();
     createDepthResources();
     createTextureImage();
     createTextureImageView();
@@ -1435,6 +1454,7 @@ class Renderer {
     cleanupSwapChain();
     createSwapChain();
     createImageViews();
+    createColorResources();
     createDepthResources();
   }
 
