@@ -6,6 +6,7 @@
 #include <fstream>
 #include <chrono>
 
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -94,6 +95,11 @@ class Renderer {
   vk::raii::DeviceMemory textureImageMemory = nullptr;
   vk::raii::ImageView textureImageView = nullptr;
   vk::raii::Sampler textureSampler = nullptr;
+
+  // Depth buffering image
+  vk::raii::Image depthImage = nullptr;
+  vk::raii::DeviceMemory depthImageMemory = nullptr;
+  vk::raii::ImageView depthImageView = nullptr;
 
   static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
   uint32_t frameInx = 0;
@@ -1152,6 +1158,26 @@ class Renderer {
     textureSampler = vk::raii::Sampler(device, samplerInfo);
   }
 
+  vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates,
+                                 vk::ImageTiling tiling,
+                                 vk::FormatFeatureFlags features) {
+    // the support of a format depends on the tilling mode and usage
+    for (const auto format : candidates) {
+      vk::FormatProperties props = physicalDevice.getFormatProperties(format);
+      if (tiling == vk::ImageTiling::eLinear &&
+          (props.linearTilingFeatures & features) == features) {
+        return format;
+      }
+      if (tiling == vk::ImageTiling::eOptimal &&
+          (props.optimalTilingFeatures & features) == features) {
+        return format;
+      }
+    }
+    throw std::runtime_error("failed to find supported format!");
+  }
+
+  void createDepthResources() {}
+
   void initvulkan() {
     createInstance();
     createSurface();
@@ -1162,6 +1188,7 @@ class Renderer {
     createDescriptorSetLayout();
     createGraphicsPipeline();
     createCommandPool();
+    createDepthResources();
     createTextureImage();
     createTextureImageView();
     createTextureSampler();
