@@ -994,13 +994,15 @@ class Renderer {
   }
 
   void createDescriptorPool() {
-    vk::DescriptorPoolSize poolSize(vk::DescriptorType::eUniformBuffer,
-                                    MAX_FRAMES_IN_FLIGHT);
-    vk::DescriptorPoolCreateInfo poolInfo{};
-    poolInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
-    poolInfo.maxSets = MAX_FRAMES_IN_FLIGHT;
-    poolInfo.poolSizeCount = 1;
-    poolInfo.pPoolSizes = &poolSize;
+    std::array poolSize{
+        vk::DescriptorPoolSize{vk::DescriptorType::eUniformBuffer,
+                               MAX_FRAMES_IN_FLIGHT},
+        vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler,
+                               MAX_FRAMES_IN_FLIGHT}};
+
+    vk::DescriptorPoolCreateInfo poolInfo{
+        vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+        MAX_FRAMES_IN_FLIGHT, poolSize};
     descriptorPool = vk::raii::DescriptorPool(device, poolInfo);
   }
 
