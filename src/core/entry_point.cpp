@@ -102,6 +102,7 @@ class Renderer {
   struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
+    glm::vec2 texCord;
 
     static vk::VertexInputBindingDescription getBindingDescription() {
       vk::VertexInputBindingDescription vertexInputBindingDescription;
@@ -112,28 +113,36 @@ class Renderer {
       return vertexInputBindingDescription;
     }
 
-    static std::array<vk::VertexInputAttributeDescription, 2>
+    static std::array<vk::VertexInputAttributeDescription, 3>
     getAttributeDescriptions() {
       vk::VertexInputAttributeDescription posDesc;
       posDesc.location = 0;
       posDesc.binding = 0;
       posDesc.format = vk::Format::eR32G32Sfloat;
       posDesc.offset = offsetof(Vertex, pos);
+
       vk::VertexInputAttributeDescription colorDesc;
       colorDesc.location = 1;
       colorDesc.binding = 0;
       colorDesc.format = vk::Format::eR32G32B32Sfloat;
       colorDesc.offset = offsetof(Vertex, color);
-      return {posDesc, colorDesc};
+
+      vk::VertexInputAttributeDescription texCord;
+      texCord.location = 2;
+      texCord.binding = 0;
+      texCord.format = vk::Format::eR32G32Sfloat;
+      texCord.offset = offsetof(Vertex, texCord);
+      return {posDesc, colorDesc, texCord};
     };
   };
 
   // combining the vertex data like its position and color, is called
   // interleaving vertex attributes
-  const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-                                        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-                                        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+  const std::vector<Vertex> vertices = {
+      {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+      {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+      {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+      {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
 
   const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
