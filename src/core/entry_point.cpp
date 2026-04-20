@@ -1,7 +1,6 @@
 #include <vulkan/vulkan_core.h>
 #include <cstdint>
 #include <cstring>
-#include <glm/ext/matrix_transform.hpp>
 #include <limits>
 #include <vector>
 #include <fstream>
@@ -806,6 +805,23 @@ class Renderer {
     commandCopyBuffer.copyBuffer(srcBuffer, dstBuffer,
                                  vk::BufferCopy(0, 0, size));
     endSingleTimeCommands(commandCopyBuffer);
+  }
+
+  void transitionImageLayout(const vk::raii::Image& image,
+                             vk::ImageLayout oldLayout,
+                             vk::ImageLayout newLayout) {
+    auto commandBuffer = beginSingleTimeCommands();
+    vk::ImageMemoryBarrier barrier{};
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    barrier.image = image;
+    vk::ImageSubresourceRange subRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0,
+                                       1};
+    barrier.subresourceRange = subRange;
+    commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, {},
+                                  nullptr, barrier);
+
+    endSingleTimeCommands(commandBuffer);
   }
 
   void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
