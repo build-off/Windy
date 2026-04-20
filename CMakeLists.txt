@@ -6,13 +6,15 @@ include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DVK_PROTOTYPES")
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_PROTOTYPES")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_C_FLAGS_RELEASE "-O3")
 
 # allow clangd to find the dependencies, using the simlink created
 # in the root of the project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include(./cmake/jolt.cmake)
-include(./cmake/include.cmake)
+# include(./cmake/jolt.cmake)
+# include(./cmake/include.cmake)
 
 # Compiling shaders
 # TODO: handle executable for other systems
@@ -89,9 +91,10 @@ target_link_libraries(imgui_exm PRIVATE
     glfw
     glm::glm
     Vulkan::Vulkan
-    Jolt
     spdlog::spdlog
-    TracyClient
+
+    # Jolt
+    # TracyClient
 )
 
 

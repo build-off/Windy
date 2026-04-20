@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <unordered_map>
 #include <vector>
 #include <fstream>
 #include <chrono>
@@ -9,6 +10,8 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -113,7 +116,12 @@ class Renderer {
   struct Vertex {
     glm::vec3 pos;
     glm::vec3 color;
-    glm::vec2 texCord;
+    glm::vec2 texCoord;
+
+    bool operator==(const Vertex& other) const {
+      return pos == other.pos && color == other.color &&
+             texCoord == other.texCoord;
+    }
 
     static vk::VertexInputBindingDescription getBindingDescription() {
       vk::VertexInputBindingDescription vertexInputBindingDescription;
@@ -142,10 +150,22 @@ class Renderer {
       texCord.location = 2;
       texCord.binding = 0;
       texCord.format = vk::Format::eR32G32Sfloat;
-      texCord.offset = offsetof(Vertex, texCord);
+      texCord.offset = offsetof(Vertex, texCoord);
       return {posDesc, colorDesc, texCord};
     };
   };
+
+  namespace std {
+  template <>
+  struct hash<Vertex> {
+    size_t operator()(Vertex const& vertex) const {
+      return ((hash<glm::vec3>()(vertex.pos) ^
+               (hash<glm::vec3>()(vertex.color) << 1)) >>
+              1) ^
+             (hash<glm::vec2>()(vertex.texCoord) << 1);
+    }
+  };
+  } // namespace std
 
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
@@ -1239,6 +1259,8 @@ class Renderer {
       throw std::runtime_error(warn + err);
     }
 
+    std::unordered_map<Vertex, uint32_t> unique_vertices{};
+
     for (const auto& shape : shapes) {
       for (const auto& index : shape.mesh.indices) {
         Vertex vertex{};
@@ -1250,7 +1272,7 @@ class Renderer {
         };
         vertex.texCord = {
             attrib.texcoords[2 * index.texcoord_index + 0],
-            attrib.texcoords[2 * index.texcoord_index + 1],
+            1.0f - attrib.texcoords[2 * index.texcoord_index + 1],
         };
         vertex.color = {1.0f, 1.0f, 1.0f};
         vertices.push_back(vertex);
