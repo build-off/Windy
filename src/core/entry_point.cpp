@@ -777,29 +777,35 @@ class Renderer {
     throw std::runtime_error("failed to find suitable memory type!");
   }
 
-  void copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer,
-                  vk::DeviceSize size) {
+  vk::raii::CommandBuffer beginSingleTimeCommands() {
     vk::CommandBufferAllocateInfo allocInfo{};
     allocInfo.commandPool = commandPool;
     allocInfo.level = vk::CommandBufferLevel::ePrimary;
     allocInfo.commandBufferCount = 1;
 
-    vk::raii::CommandBuffer commandCopyBuffer =
+    vk::raii::CommandBuffer commandBuffer =
         std::move(device.allocateCommandBuffers(allocInfo).front());
     vk::CommandBufferBeginInfo beginInfo{};
     beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-    commandCopyBuffer.begin(beginInfo);
+    commandBuffer.begin(beginInfo);
+    return commandBuffer;
+  }
 
-    commandCopyBuffer.copyBuffer(srcBuffer, dstBuffer,
-                                 vk::BufferCopy(0, 0, size));
-    commandCopyBuffer.end();
-
-    // Submit the copyBuffer
+  void endSingleTimeCommands(vk::raii::CommandBuffer& commandBuffer) {
+    commandBuffer.end();
     vk::SubmitInfo submitInfo{};
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &*commandCopyBuffer;
+    submitInfo.pCommandBuffers = &*commandBuffer;
     queue.submit(submitInfo, nullptr);
     queue.waitIdle();
+  }
+
+  void copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer,
+                  vk::DeviceSize size) {
+    vk::raii::CommandBuffer commandCopyBuffer = beginSingleTimeCommands();
+    commandCopyBuffer.copyBuffer(srcBuffer, dstBuffer,
+                                 vk::BufferCopy(0, 0, size));
+    endSingleTimeCommands(commandCopyBuffer);
   }
 
   void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
