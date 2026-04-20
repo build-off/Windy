@@ -93,6 +93,7 @@ class Renderer {
   vk::raii::Image textureImage = nullptr;
   vk::raii::DeviceMemory textureImageMemory = nullptr;
   vk::raii::ImageView textureImageView = nullptr;
+  vk::raii::Sampler textureSampler = nullptr;
 
   static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
   uint32_t frameInx = 0;
@@ -1084,6 +1085,27 @@ class Renderer {
     textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb);
   }
 
+  void createTextureSampler() {
+    vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
+    vk::SamplerCreateInfo samplerInfo{};
+    samplerInfo.magFilter = vk::Filter::eLinear;
+    samplerInfo.minFilter = vk::Filter::eLinear;
+    samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
+    samplerInfo.mipLodBias = 0.0f;
+    samplerInfo.minLod = 0.0f;
+    samplerInfo.maxLod = 0.0f;
+    samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
+    samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
+    samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
+    samplerInfo.anisotropyEnable = vk::True;
+    samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+    samplerInfo.compareEnable = vk::False;
+    samplerInfo.compareOp = vk::CompareOp::eAlways;
+    samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
+    samplerInfo.unnormalizedCoordinates = vk::False;
+    textureSampler = vk::raii::Sampler(device, samplerInfo);
+  }
+
   void initvulkan() {
     createInstance();
     createSurface();
@@ -1096,6 +1118,7 @@ class Renderer {
     createCommandPool();
     createTextureImage();
     createTextureImageView();
+    createTextureSampler();
     createVertexBuffer();
     createIndexBuffer();
     createUniformBuffers();
