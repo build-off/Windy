@@ -1176,6 +1176,14 @@ class Renderer {
     throw std::runtime_error("failed to find supported format!");
   }
 
+  vk::Format findDepthFormat() {
+    return findSupportedFormat(
+        {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint,
+         vk::Format::eD24UnormS8Uint},
+        vk::ImageTiling::eOptimal,
+        vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+  }
+
   void createDepthResources() {}
 
   void initvulkan() {
