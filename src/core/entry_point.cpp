@@ -45,6 +45,60 @@ const bool enableValidationLayers = true;
 
 #include "log.h"
 
+struct Vertex {
+  glm::vec3 pos;
+  glm::vec3 color;
+  glm::vec2 texCoord;
+
+  bool operator==(const Vertex& other) const {
+    return pos == other.pos && color == other.color &&
+           texCoord == other.texCoord;
+  }
+
+  static vk::VertexInputBindingDescription getBindingDescription() {
+    vk::VertexInputBindingDescription vertexInputBindingDescription;
+    vertexInputBindingDescription.binding = 0;
+    vertexInputBindingDescription.stride = sizeof(Vertex);
+    vertexInputBindingDescription.inputRate = vk::VertexInputRate::eVertex;
+
+    return vertexInputBindingDescription;
+  }
+
+  static std::array<vk::VertexInputAttributeDescription, 3>
+  getAttributeDescriptions() {
+    vk::VertexInputAttributeDescription posDesc;
+    posDesc.location = 0;
+    posDesc.binding = 0;
+    posDesc.format = vk::Format::eR32G32B32Sfloat;
+    posDesc.offset = offsetof(Vertex, pos);
+
+    vk::VertexInputAttributeDescription colorDesc;
+    colorDesc.location = 1;
+    colorDesc.binding = 0;
+    colorDesc.format = vk::Format::eR32G32B32Sfloat;
+    colorDesc.offset = offsetof(Vertex, color);
+
+    vk::VertexInputAttributeDescription texCord;
+    texCord.location = 2;
+    texCord.binding = 0;
+    texCord.format = vk::Format::eR32G32Sfloat;
+    texCord.offset = offsetof(Vertex, texCoord);
+    return {posDesc, colorDesc, texCord};
+  };
+};
+
+namespace std {
+template <>
+struct hash<Vertex> {
+  size_t operator()(Vertex const& vertex) const {
+    return ((hash<glm::vec3>()(vertex.pos) ^
+             (hash<glm::vec3>()(vertex.color) << 1)) >>
+            1) ^
+           (hash<glm::vec2>()(vertex.texCoord) << 1);
+  }
+};
+} // namespace std
+
 class Renderer {
  public:
   void run() {
@@ -112,60 +166,6 @@ class Renderer {
   static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
   uint32_t frameInx = 0;
   bool framebufferResize = false;
-
-  struct Vertex {
-    glm::vec3 pos;
-    glm::vec3 color;
-    glm::vec2 texCoord;
-
-    bool operator==(const Vertex& other) const {
-      return pos == other.pos && color == other.color &&
-             texCoord == other.texCoord;
-    }
-
-    static vk::VertexInputBindingDescription getBindingDescription() {
-      vk::VertexInputBindingDescription vertexInputBindingDescription;
-      vertexInputBindingDescription.binding = 0;
-      vertexInputBindingDescription.stride = sizeof(Vertex);
-      vertexInputBindingDescription.inputRate = vk::VertexInputRate::eVertex;
-
-      return vertexInputBindingDescription;
-    }
-
-    static std::array<vk::VertexInputAttributeDescription, 3>
-    getAttributeDescriptions() {
-      vk::VertexInputAttributeDescription posDesc;
-      posDesc.location = 0;
-      posDesc.binding = 0;
-      posDesc.format = vk::Format::eR32G32B32Sfloat;
-      posDesc.offset = offsetof(Vertex, pos);
-
-      vk::VertexInputAttributeDescription colorDesc;
-      colorDesc.location = 1;
-      colorDesc.binding = 0;
-      colorDesc.format = vk::Format::eR32G32B32Sfloat;
-      colorDesc.offset = offsetof(Vertex, color);
-
-      vk::VertexInputAttributeDescription texCord;
-      texCord.location = 2;
-      texCord.binding = 0;
-      texCord.format = vk::Format::eR32G32Sfloat;
-      texCord.offset = offsetof(Vertex, texCoord);
-      return {posDesc, colorDesc, texCord};
-    };
-  };
-
-  namespace std {
-  template <>
-  struct hash<Vertex> {
-    size_t operator()(Vertex const& vertex) const {
-      return ((hash<glm::vec3>()(vertex.pos) ^
-               (hash<glm::vec3>()(vertex.color) << 1)) >>
-              1) ^
-             (hash<glm::vec2>()(vertex.texCoord) << 1);
-    }
-  };
-  } // namespace std
 
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
@@ -1270,13 +1270,17 @@ class Renderer {
             attrib.vertices[3 * index.vertex_index + 1],
             attrib.vertices[3 * index.vertex_index + 2],
         };
-        vertex.texCord = {
+        vertex.texCoord = {
             attrib.texcoords[2 * index.texcoord_index + 0],
             1.0f - attrib.texcoords[2 * index.texcoord_index + 1],
         };
         vertex.color = {1.0f, 1.0f, 1.0f};
-        vertices.push_back(vertex);
-        indices.push_back(indices.size());
+
+        if (unique_vertices.count(vertex) == 0) {
+          unique_vertices[vertex] = static_cast<uint32_t>(vertices.size());
+          vertices.push_back(vertex);
+        }
+        indices.push_back(unique_vertices[vertex]);
       }
     }
   }
