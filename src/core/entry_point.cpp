@@ -1,31 +1,9 @@
-#include <cstdint>
-#include <cstring>
-#include <limits>
-#include <unordered_map>
-#include <vector>
-#include <fstream>
-#include <chrono>
-
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/hash.hpp>
-
-#define STB_IMAGE_IMPLEMENTATION
+#include <whdz.h>
 #include <stb/stb_image.h>
-
-#define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
-#if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
-#include <vulkan/vulkan_raii.hpp>
-#else
-import vulkan_hpp;
-#endif
-
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include "log.h"
+#include "vulkan/vulkan.hpp"
 
 const std::vector<char const*> validationlayers = {
     "VK_LAYER_KHRONOS_validation"};
@@ -35,12 +13,6 @@ const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif
-
-#include <iostream>
-#include <stdexcept>
-#include <cstdlib>
-
-#include "log.h"
 
 struct Vertex {
   glm::vec3 pos;
@@ -161,6 +133,9 @@ class Renderer {
   vk::raii::DeviceMemory depthImageMemory = nullptr;
   vk::raii::ImageView depthImageView = nullptr;
 
+  // Multisampling
+  vk::SampleCountFlagBits msaaSamples = vk::SampleCountFlagBits::e1;
+
   static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
   uint32_t frameInx = 0;
   bool framebufferResize = false;
@@ -276,6 +251,34 @@ class Renderer {
     instance = vk::raii::Instance(context, createInfo);
   }
 
+  vk::SampleCountFlagBits getMaxUsableSampleCount() {
+    vk::PhysicalDeviceProperties physicalDeviceProperties =
+        physicalDevice.getProperties();
+    vk::SampleCountFlags counts =
+        physicalDeviceProperties.limits.framebufferColorSampleCounts &
+        physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+
+    if (counts & vk::SampleCountFlagBits::e64) {
+      return vk::SampleCountFlagBits::e64;
+    }
+    if (counts & vk::SampleCountFlagBits::e32) {
+      return vk::SampleCountFlagBits::e32;
+    }
+    if (counts & vk::SampleCountFlagBits::e16) {
+      return vk::SampleCountFlagBits::e16;
+    }
+    if (counts & vk::SampleCountFlagBits::e8) {
+      return vk::SampleCountFlagBits::e8;
+    }
+    if (counts & vk::SampleCountFlagBits::e4) {
+      return vk::SampleCountFlagBits::e4;
+    }
+    if (counts & vk::SampleCountFlagBits::e2) {
+      return vk::SampleCountFlagBits::e2;
+    }
+    return vk::SampleCountFlagBits::e1;
+  }
+
   std::vector<const char*> requiredDeviceExtension = {
       vk::KHRSwapchainExtensionName};
 
@@ -332,6 +335,13 @@ class Renderer {
           return isDeviceSuitable(physicalDevice);
         });
 
+    for (const auto& device : physicalDevices) {
+      if (isDeviceSuitable(device)) {
+        physicalDevice = device;
+        msaaSamples = getMaxUsableSampleCount();
+        break;
+      }
+    }
     if (devIter == physicalDevices.end()) {
       throw std::runtime_error("failed to find a suitable GPU!");
     }

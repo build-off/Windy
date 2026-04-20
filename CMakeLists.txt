@@ -4,8 +4,8 @@ project(Windy C CXX)
 include(FetchContent)
 
 set(CMAKE_CXX_STANDARD 20)
-set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DVK_PROTOTYPES")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_PROTOTYPES")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DVK_PROTOTYPES")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_PROTOTYPES")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 
@@ -13,8 +13,8 @@ set(CMAKE_C_FLAGS_RELEASE "-O3")
 # in the root of the project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# include(./cmake/jolt.cmake)
-# include(./cmake/include.cmake)
+include(./cmake/jolt.cmake)
+include(./cmake/include.cmake)
 
 # Compiling shaders
 # TODO: handle executable for other systems
@@ -49,19 +49,22 @@ set(SHADER_SLANG_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/shader.slang
 )
 add_slang_shader_target(shaders SOURCES ${SHADER_SLANG_SOURCES})
+set(VENDOR_IMPL 
+    ./vendor/impl/stb_image_impl.cpp
+    ./vendor/impl/tiny_obj_loader_impl.cpp)
 
 add_executable(imgui_exm
     ./src/core/entry_point.cpp
 
     # imgui
-    ./src/imgui/imconfig.h
-    ./src/imgui/imgui.h
-    ./src/imgui/imgui_internal.h
-    ./src/imgui/imgui.cpp
-    ./src/imgui/imgui_draw.cpp
-    ./src/imgui/imgui_demo.cpp
-    ./src/imgui/imgui_tables.cpp
-    ./src/imgui/imgui_widgets.cpp
+    # ./src/imgui/imconfig.h
+    # ./src/imgui/imgui.h
+    # ./src/imgui/imgui_internal.h
+    # ./src/imgui/imgui.cpp
+    # ./src/imgui/imgui_draw.cpp
+    # ./src/imgui/imgui_demo.cpp
+    # ./src/imgui/imgui_tables.cpp
+    # ./src/imgui/imgui_widgets.cpp
 
     # core
     ./src/core/log.h
@@ -69,9 +72,14 @@ add_executable(imgui_exm
     ./src/core/base.h
 
     # backends
-    ./src/imgui_impl_glfw.cpp
-    ./src/imgui_impl_vulkan.cpp
+    # ./src/imgui_impl_glfw.cpp
+    # ./src/imgui_impl_vulkan.cpp
 )
+
+target_precompile_headers(imgui_exm PRIVATE precompiled/whdz.h)
+add_library(vendor_lib STATIC ${VENDOR_IMPL})
+target_include_directories(vendor_lib PUBLIC ${CMAKE_SOURCE_DIR}/vendor)
+target_link_libraries(imgui_exm PRIVATE vendor_lib)
 
 add_dependencies(imgui_exm shaders)
 
@@ -80,11 +88,13 @@ find_package(glm CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(spdlog REQUIRED)
 
-target_include_directories(imgui_exm PRIVATE
-    ./src/backends
-)
+# target_include_directories(imgui_exm PRIVATE
+#     ./src/backends
+# )
+
 target_include_directories(imgui_exm PRIVATE
     ${CMAKE_SOURCE_DIR}/vendor
+    ${CMAKE_SOURCE_DIR}/precompiled
 )
 
 target_link_libraries(imgui_exm PRIVATE
@@ -92,14 +102,6 @@ target_link_libraries(imgui_exm PRIVATE
     glm::glm
     Vulkan::Vulkan
     spdlog::spdlog
-
-    # Jolt
-    # TracyClient
+    Jolt
+    TracyClient
 )
-
-
-
-
-
-
-

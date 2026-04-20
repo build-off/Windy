@@ -1,5 +1,6 @@
 #pragma once
 
+#include <whdz.h>
 #include <glm/detail/type_quat.hpp>
 #include "base.h"
 
