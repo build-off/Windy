@@ -356,6 +356,10 @@ class Renderer {
 
     // vk::PhysicalDeviceFeatures2 (empty for now)
     auto& features2 = featureChain.get<vk::PhysicalDeviceFeatures2>();
+    vk::PhysicalDeviceFeatures f2_features{};
+    f2_features.samplerAnisotropy = VK_TRUE;
+    features2.features = f2_features;
+
     // Enable dynamic rendering from Vulkan 1.3
     auto& v13 = featureChain.get<vk::PhysicalDeviceVulkan13Features>();
     v13.dynamicRendering = VK_TRUE;
