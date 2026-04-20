@@ -13,6 +13,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
+
 #include "vulkan/vulkan.hpp"
 
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
@@ -53,6 +56,8 @@ class Renderer {
  private:
   constexpr static uint32_t WIDTH = 800;
   constexpr static uint32_t HEIGHT = 600;
+  const std::string MODEL_PATH = "models/viking_room.obj";
+  const std::string TEXTURE_PATH = "textures/viking_room.png";
 
   GLFWwindow* window;
   vk::raii::Context context;
@@ -142,20 +147,8 @@ class Renderer {
     };
   };
 
-  // combining the vertex data like its position and color, is called
-  // interleaving vertex attributes
-  const std::vector<Vertex> vertices = {
-      {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-      {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-      {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-      {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-
-      {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-      {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-      {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-      {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}};
-
-  const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
+  std::vector<Vertex> vertices;
+  std::vector<uint32_t> indices;
 
   struct UniformBufferObject {
     alignas(16) glm::mat4 model;
@@ -755,7 +748,7 @@ class Renderer {
                                           *graphicsPipeline);
     commandBuffers[frameInx].bindVertexBuffers(0, *vertexBuffer, {0});
     commandBuffers[frameInx].bindIndexBuffer(*indexBuffer, 0,
-                                             vk::IndexType::eUint16);
+                                             vk::IndexType::eUint32);
     commandBuffers[frameInx].setViewport(
         0,
         vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width),
@@ -1135,7 +1128,7 @@ class Renderer {
 
   void createTextureImage() {
     int texWidth, texHeight, texChannels;
-    stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight,
+    stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight,
                                 &texChannels, STBI_rgb_alpha);
     vk::DeviceSize imageSize = texWidth * texHeight * 4;
     if (!pixels) throw std::runtime_error("failed to load texture image!");
@@ -1235,6 +1228,18 @@ class Renderer {
                                      vk::ImageAspectFlagBits::eDepth);
   }
 
+  void loadModel() {
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string warn, err;
+
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err,
+                          MODEL_PATH.c_str())) {
+      throw std::runtime_error(warn + err);
+    }
+  }
+
   void initvulkan() {
     createInstance();
     createSurface();
@@ -1249,6 +1254,7 @@ class Renderer {
     createTextureImage();
     createTextureImageView();
     createTextureSampler();
+    loadModel();
     createVertexBuffer();
     createIndexBuffer();
     createUniformBuffers();
@@ -1283,6 +1289,7 @@ class Renderer {
     cleanupSwapChain();
     createSwapChain();
     createImageViews();
+    createDepthResources();
   }
 
   void updateUniformBuffer(uint32_t currentImage) {
