@@ -153,6 +153,7 @@ class Renderer {
   std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
   std::vector<vk::raii::Fence> inflightfences;
 
+  uint32_t mipLevels;
   vk::raii::Image textureImage = nullptr;
   vk::raii::DeviceMemory textureImageMemory = nullptr;
   vk::raii::ImageView textureImageView = nullptr;
@@ -532,14 +533,17 @@ class Renderer {
     surface = vk::raii::SurfaceKHR(instance, _surface);
   }
 
-  vk::raii::ImageView createImageView(vk::raii::Image& image, vk::Format format,
-                                      vk::ImageAspectFlagBits aspectFlags) {
+  [[nodiscard]] vk::raii::ImageView createImageView(
+      vk::raii::Image& image, vk::Format format,
+      vk::ImageAspectFlagBits aspectFlags, uint32_t mipLevels) const {
     vk::ImageViewCreateInfo viewInfo{};
+    vk::ImageSubresourceRange subRange{aspectFlags, 0, 1, 0, 1};
+    subRange.levelCount = mipLevels;
     viewInfo.image = image;
     viewInfo.viewType = vk::ImageViewType::e2D;
     viewInfo.format = format;
-    viewInfo.subresourceRange =
-        vk::ImageSubresourceRange{aspectFlags, 0, 1, 0, 1};
+    viewInfo.subresourceRange = subRange;
+
     return vk::raii::ImageView(device, viewInfo);
   }
 
@@ -910,7 +914,7 @@ class Renderer {
 
   void transitionImageLayout(const vk::raii::Image& image,
                              vk::ImageLayout oldLayout,
-                             vk::ImageLayout newLayout) {
+                             vk::ImageLayout newLayout, uint32_t mipLevels) {
     auto commandBuffer = beginSingleTimeCommands();
     vk::ImageMemoryBarrier barrier{};
     barrier.oldLayout = oldLayout;
@@ -918,6 +922,7 @@ class Renderer {
     barrier.image = image;
     vk::ImageSubresourceRange subRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0,
                                        1};
+    subRange.levelCount = mipLevels;
     barrier.subresourceRange = subRange;
 
     vk::PipelineStageFlags sourceStage;
@@ -1120,8 +1125,9 @@ class Renderer {
     }
   }
 
-  void createImage(uint32_t width, uint32_t height, vk::Format format,
-                   vk::ImageTiling tiling, vk::ImageUsageFlags usage,
+  void createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
+                   vk::Format format, vk::ImageTiling tiling,
+                   vk::ImageUsageFlags usage,
                    vk::MemoryPropertyFlags properties, vk::raii::Image& image,
                    vk::raii::DeviceMemory& imageMemory) {
     vk::ImageCreateInfo imageInfo{};
@@ -1129,6 +1135,7 @@ class Renderer {
     imageInfo.format = format;
     vk::Extent3D extenxt{width, height, 1};
     imageInfo.extent = extenxt;
+    imageInfo.mipLevels = mipLevels;
     imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = 1;
     imageInfo.samples = vk::SampleCountFlagBits::e1;
@@ -1150,6 +1157,9 @@ class Renderer {
     int texWidth, texHeight, texChannels;
     stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight,
                                 &texChannels, STBI_rgb_alpha);
+    mipLevels = static_cast<uint32_t>(
+                    std::floor(std::log2(std::max(texWidth, texHeight)))) +
+                1;
     vk::DeviceSize imageSize = texWidth * texHeight * 4;
     if (!pixels) throw std::runtime_error("failed to load texture image!");
 
@@ -1166,23 +1176,24 @@ class Renderer {
     stbi_image_free(pixels);
 
     createImage(
-        texWidth, texHeight, vk::Format::eR8G8B8A8Srgb,
+        texWidth, texHeight, mipLevels, vk::Format::eR8G8B8A8Srgb,
         vk::ImageTiling::eOptimal,
         vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
         vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage,
         textureImageMemory);
     transitionImageLayout(textureImage, vk::ImageLayout::eUndefined,
-                          vk::ImageLayout::eTransferDstOptimal);
+                          vk::ImageLayout::eTransferDstOptimal, mipLevels);
     copyBufferToImage(stagingBuffer, textureImage,
                       static_cast<uint32_t>(texWidth),
                       static_cast<uint32_t>(texHeight));
     transitionImageLayout(textureImage, vk::ImageLayout::eTransferDstOptimal,
-                          vk::ImageLayout::eShaderReadOnlyOptimal);
+                          vk::ImageLayout::eShaderReadOnlyOptimal, mipLevels);
   }
 
   void createTextureImageView() {
-    textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb,
-                                       vk::ImageAspectFlagBits::eColor);
+    textureImageView =
+        createImageView(textureImage, vk::Format::eR8G8B8A8Srgb,
+                        vk::ImageAspectFlagBits::eColor, mipLevels);
   }
 
   void createTextureSampler() {
@@ -1239,13 +1250,13 @@ class Renderer {
 
   void createDepthResources() {
     vk::Format depthFormat = findDepthFormat();
-    createImage(swapChainExtent.width, swapChainExtent.height, depthFormat,
+    createImage(swapChainExtent.width, swapChainExtent.height, 1, depthFormat,
                 vk::ImageTiling::eOptimal,
                 vk::ImageUsageFlagBits::eDepthStencilAttachment,
                 vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage,
                 depthImageMemory);
     depthImageView = createImageView(depthImage, depthFormat,
-                                     vk::ImageAspectFlagBits::eDepth);
+                                     vk::ImageAspectFlagBits::eDepth, 1);
   }
 
   void loadModel() {
