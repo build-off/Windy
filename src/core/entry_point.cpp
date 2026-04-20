@@ -91,6 +91,9 @@ class Renderer {
   std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
   std::vector<vk::raii::Fence> inflightfences;
 
+  vk::raii::Image textureImage = nullptr;
+  vk::raii::DeviceMemory textureImageMemory = nullptr;
+
   static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
   uint32_t frameInx = 0;
   bool framebufferResize = false;
@@ -949,6 +952,32 @@ class Renderer {
     }
   }
 
+  void createImage(uint32_t width, uint32_t height, vk::Format format,
+                   vk::ImageTiling tiling, vk::ImageUsageFlags usage,
+                   vk::MemoryPropertyFlags properties, vk::raii::Image& image,
+                   vk::raii::DeviceMemory& imageMemory) {
+    vk::ImageCreateInfo imageInfo{};
+    imageInfo.imageType = vk::ImageType::e2D;
+    imageInfo.format = format;
+    vk::Extent3D extenxt{width, height, 1};
+    imageInfo.extent = extenxt;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples = vk::SampleCountFlagBits::e1;
+    imageInfo.tiling = tiling;
+    imageInfo.usage = usage;
+    imageInfo.sharingMode = vk::SharingMode::eExclusive;
+
+    image = vk::raii::Image(device, imageInfo);
+    vk::MemoryRequirements memRequirements = image.getMemoryRequirements();
+    vk::MemoryAllocateInfo allocInfo{};
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex =
+        find_memory_type(memRequirements.memoryTypeBits, properties);
+    imageMemory = vk::raii::DeviceMemory(device, allocInfo);
+    image.bindMemory(imageMemory, 0);
+  }
+
   void createTextureImage() {
     int texWidth, texHeight, texChannels;
     stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight,
@@ -967,6 +996,9 @@ class Renderer {
     memcpy(data, pixels, imageSize);
     stagingBufferMemory.unmapMemory();
     stbi_image_free(pixels);
+
+    vk::raii::Image textureImageTemp({});
+    vk::raii::DeviceMemory textureImageMemoryTemp({});
   }
 
   void initvulkan() {
