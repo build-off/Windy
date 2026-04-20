@@ -1137,7 +1137,6 @@ class Renderer {
     vk::Extent3D extenxt{width, height, 1};
     imageInfo.extent = extenxt;
     imageInfo.mipLevels = mipLevels;
-    imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = 1;
     imageInfo.samples = vk::SampleCountFlagBits::e1;
     imageInfo.tiling = tiling;
@@ -1157,6 +1156,15 @@ class Renderer {
   void generateMipMaps(vk::raii::Image& image, vk::Format imageFormat,
                        int32_t texWidth, int32_t texHeight,
                        uint32_t mipLevels) {
+    vk::FormatProperties formatProperties =
+        physicalDevice.getFormatProperties(imageFormat);
+
+    if (!(formatProperties.optimalTilingFeatures &
+          vk::FormatFeatureFlagBits::eSampledImageFilterLinear)) {
+      throw std::runtime_error(
+          "texture image format does not support linear blitting!");
+    }
+
     vk::raii::CommandBuffer commandBuffer = beginSingleTimeCommands();
     vk::ImageMemoryBarrier barrier(
         vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eTransferRead,
@@ -1278,7 +1286,7 @@ class Renderer {
     samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
     samplerInfo.mipLodBias = 0.0f;
     samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = 0.0f;
+    samplerInfo.maxLod = vk::LodClampNone;
     samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
     samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
     samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
