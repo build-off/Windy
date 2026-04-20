@@ -840,9 +840,24 @@ class Renderer {
     vk::PipelineStageFlags sourceStage;
     vk::PipelineStageFlags destinationStage;
 
+    if (oldLayout == vk::ImageLayout::eUndefined &&
+        newLayout == vk::ImageLayout::eTransferDstOptimal) {
+      barrier.srcAccessMask = {};
+      barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+      sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+      destinationStage = vk::PipelineStageFlagBits::eTransfer;
+    } else if (oldLayout == vk::ImageLayout::eTransferDstOptimal &&
+               newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+      barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+      barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+      sourceStage = vk::PipelineStageFlagBits::eTransfer;
+      destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+    } else {
+      throw std::invalid_argument("unsupported layout transition!");
+    }
+
     commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, {},
                                   nullptr, barrier);
-
     endSingleTimeCommands(commandBuffer);
   }
 
@@ -1041,14 +1056,12 @@ class Renderer {
     stagingBufferMemory.unmapMemory();
     stbi_image_free(pixels);
 
-    vk::raii::Image textureImageTemp({});
-    vk::raii::DeviceMemory textureImageMemoryTemp({});
     createImage(
         texWidth, texHeight, vk::Format::eR8G8B8A8Srgb,
         vk::ImageTiling::eOptimal,
         vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-        vk::MemoryPropertyFlagBits::eDeviceLocal, textureImageTemp,
-        textureImageMemoryTemp);
+        vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage,
+        textureImageMemory);
     transitionImageLayout(textureImage, vk::ImageLayout::eUndefined,
                           vk::ImageLayout::eTransferDstOptimal);
     copyBufferToImage(stagingBuffer, textureImage,
