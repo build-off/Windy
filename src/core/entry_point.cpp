@@ -863,6 +863,7 @@ class Renderer {
     throw std::runtime_error("failed to find suitable memory type!");
   }
 
+  // TODO: implement it as unique_ptr
   vk::raii::CommandBuffer beginSingleTimeCommands() {
     vk::CommandBufferAllocateInfo allocInfo{};
     allocInfo.commandPool = commandPool;
@@ -1153,6 +1154,76 @@ class Renderer {
     image.bindMemory(imageMemory, 0);
   }
 
+  void generateMipMaps(vk::raii::Image& image, vk::Format imageFormat,
+                       int32_t texWidth, int32_t texHeight,
+                       uint32_t mipLevels) {
+    vk::raii::CommandBuffer commandBuffer = beginSingleTimeCommands();
+    vk::ImageMemoryBarrier barrier(
+        vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eTransferRead,
+        vk::ImageLayout::eTransferDstOptimal,
+        vk::ImageLayout::eTransferSrcOptimal, vk::QueueFamilyIgnored,
+        vk::QueueFamilyIgnored, image);
+    barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.levelCount = 1;
+
+    int32_t mipWidth = texWidth;
+    int32_t mipHeight = texHeight;
+
+    for (uint32_t i = 1; i < mipLevels; ++i) {
+      barrier.subresourceRange.baseMipLevel = i - 1;
+      barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+      barrier.newLayout = vk::ImageLayout::eTransferSrcOptimal;
+      barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+      barrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
+      commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                                    vk::PipelineStageFlagBits::eTransfer, {},
+                                    {}, {}, barrier);
+      vk::ArrayWrapper1D<vk::Offset3D, 2> offsets, dstOffsets;
+      offsets[0] = vk::Offset3D(0, 0, 0);
+      offsets[1] = vk::Offset3D(mipWidth, mipHeight, 1);
+      dstOffsets[0] = vk::Offset3D(0, 0, 0);
+      dstOffsets[1] = vk::Offset3D(mipWidth > 1 ? mipWidth / 2 : 1,
+                                   mipHeight > 1 ? mipHeight / 2 : 1, 1);
+      vk::ImageBlit blit{};
+      blit.srcSubresource = vk::ImageSubresourceLayers{};
+      blit.srcOffsets = offsets;
+      blit.dstSubresource = vk::ImageSubresourceLayers{};
+      blit.dstOffsets = dstOffsets;
+      blit.srcSubresource = vk::ImageSubresourceLayers(
+          vk::ImageAspectFlagBits::eColor, i - 1, 0, 1);
+      blit.dstSubresource =
+          vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, i, 0, 1);
+
+      commandBuffer.blitImage(image, vk::ImageLayout::eTransferSrcOptimal,
+                              image, vk::ImageLayout::eTransferDstOptimal,
+                              {blit}, vk::Filter::eLinear);
+
+      barrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
+      barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+      barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
+      barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+      commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                                    vk::PipelineStageFlagBits::eFragmentShader,
+                                    {}, {}, {}, barrier);
+      // finally depp level
+      if (mipWidth > 1) mipWidth /= 2;
+      if (mipHeight > 1) mipHeight /= 2;
+    }
+
+    barrier.subresourceRange.baseMipLevel = mipLevels - 1;
+    barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+    barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+    barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+    barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+    commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                                  vk::PipelineStageFlagBits::eFragmentShader,
+                                  {}, {}, {}, barrier);
+
+    endSingleTimeCommands(commandBuffer);
+  }
+
   void createTextureImage() {
     int texWidth, texHeight, texChannels;
     stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight,
@@ -1175,12 +1246,13 @@ class Renderer {
     stagingBufferMemory.unmapMemory();
     stbi_image_free(pixels);
 
-    createImage(
-        texWidth, texHeight, mipLevels, vk::Format::eR8G8B8A8Srgb,
-        vk::ImageTiling::eOptimal,
-        vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-        vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage,
-        textureImageMemory);
+    createImage(texWidth, texHeight, mipLevels, vk::Format::eR8G8B8A8Srgb,
+                vk::ImageTiling::eOptimal,
+                vk::ImageUsageFlagBits::eTransferSrc |
+                    vk::ImageUsageFlagBits::eTransferDst |
+                    vk::ImageUsageFlagBits::eSampled,
+                vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage,
+                textureImageMemory);
     transitionImageLayout(textureImage, vk::ImageLayout::eUndefined,
                           vk::ImageLayout::eTransferDstOptimal, mipLevels);
     copyBufferToImage(stagingBuffer, textureImage,
@@ -1188,6 +1260,8 @@ class Renderer {
                       static_cast<uint32_t>(texHeight));
     transitionImageLayout(textureImage, vk::ImageLayout::eTransferDstOptimal,
                           vk::ImageLayout::eShaderReadOnlyOptimal, mipLevels);
+    generateMipMaps(textureImage, vk::Format::eR8G8B8A8Srgb, texWidth,
+                    texHeight, mipLevels);
   }
 
   void createTextureImageView() {
