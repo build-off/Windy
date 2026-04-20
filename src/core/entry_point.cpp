@@ -336,20 +336,17 @@ class Renderer {
     auto physicalDevices = instance.enumeratePhysicalDevices();
     auto const devIter =
         std::ranges::find_if(physicalDevices, [&](auto const& physicalDevice) {
+          if (isDeviceSuitable(physicalDevice)) {
+          }
           return isDeviceSuitable(physicalDevice);
         });
 
-    for (const auto& device : physicalDevices) {
-      if (isDeviceSuitable(device)) {
-        physicalDevice = device;
-        msaaSamples = getMaxUsableSampleCount();
-        break;
-      }
-    }
     if (devIter == physicalDevices.end()) {
       throw std::runtime_error("failed to find a suitable GPU!");
     }
+
     physicalDevice = *devIter;
+    msaaSamples = getMaxUsableSampleCount();
   }
 
   void initwindow() {
@@ -735,6 +732,13 @@ class Renderer {
 
   void recordCommandBuffer(uint32_t imageIndex) {
     commandBuffers[frameInx].begin({});
+    transition_image_layout(*colorImage, vk::ImageLayout::eUndefined,
+                            vk::ImageLayout::eColorAttachmentOptimal, {},
+                            vk::AccessFlagBits2::eColorAttachmentWrite,
+                            vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                            vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                            vk::ImageAspectFlagBits::eColor);
+
     transition_image_layout(swapChainImages[imageIndex],
                             vk::ImageLayout::eUndefined,
                             vk::ImageLayout::eColorAttachmentOptimal, {},
@@ -757,7 +761,7 @@ class Renderer {
     vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
 
     vk::RenderingAttachmentInfo colorAttatchment;
-    colorAttatchment.imageView = swapChainImageViews[imageIndex];
+    colorAttatchment.imageView = colorImageView;
     colorAttatchment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
     colorAttatchment.resolveMode = vk::ResolveModeFlagBits::eAverage;
     colorAttatchment.resolveImageView = swapChainImageViews[imageIndex];
@@ -1401,6 +1405,9 @@ class Renderer {
                     vk::ImageUsageFlagBits::eColorAttachment,
                 vk::MemoryPropertyFlagBits::eDeviceLocal, colorImage,
                 colorImageMemory);
+
+    colorImageView = createImageView(colorImage, colorFormat,
+                                     vk::ImageAspectFlagBits::eColor, 1);
   }
 
   void initvulkan() {
