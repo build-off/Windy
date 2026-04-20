@@ -81,6 +81,9 @@ find_package(spdlog REQUIRED)
 target_include_directories(imgui_exm PRIVATE
     ./src/backends
 )
+target_include_directories(imgui_exm PRIVATE
+    ${CMAKE_SOURCE_DIR}/vendor
+)
 
 target_link_libraries(imgui_exm PRIVATE
     glfw

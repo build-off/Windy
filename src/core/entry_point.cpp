@@ -10,6 +10,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+
 #include "vulkan/vulkan.hpp"
 
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
