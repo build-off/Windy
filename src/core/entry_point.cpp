@@ -1022,15 +1022,34 @@ class Renderer {
       bufferInfo.buffer = uniformBuffers[i];
       bufferInfo.offset = 0;
       bufferInfo.range = sizeof(UniformBufferObject);
+      vk::DescriptorImageInfo imageInfo{};
+      imageInfo.sampler = textureSampler;
+      imageInfo.imageView = textureImageView;
+      imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
 
-      vk::WriteDescriptorSet descriptorWrite{};
-      descriptorWrite.dstSet = descriptorSets[i];
-      descriptorWrite.dstBinding = 0;
-      descriptorWrite.dstArrayElement = 0;
-      descriptorWrite.descriptorCount = 1;
-      descriptorWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
-      descriptorWrite.pBufferInfo = &bufferInfo;
-      device.updateDescriptorSets(descriptorWrite, {});
+      // Descriptor set for uniform buffers
+      vk::WriteDescriptorSet uniformBufferDescriptorWrite;
+      uniformBufferDescriptorWrite.dstSet = descriptorSets[i];
+      uniformBufferDescriptorWrite.dstBinding = 0;
+      uniformBufferDescriptorWrite.dstArrayElement = 0;
+      uniformBufferDescriptorWrite.descriptorCount = 1;
+      uniformBufferDescriptorWrite.descriptorType =
+          vk::DescriptorType::eUniformBuffer;
+      uniformBufferDescriptorWrite.pBufferInfo = &bufferInfo;
+
+      // Descriptor set for combined image sampler
+      vk::WriteDescriptorSet combinedImageSamplerDescriptorWrite;
+      combinedImageSamplerDescriptorWrite.dstSet = descriptorSets[i];
+      combinedImageSamplerDescriptorWrite.dstBinding = 1;
+      combinedImageSamplerDescriptorWrite.dstArrayElement = 0;
+      combinedImageSamplerDescriptorWrite.descriptorCount = 1;
+      combinedImageSamplerDescriptorWrite.descriptorType =
+          vk::DescriptorType::eCombinedImageSampler;
+      combinedImageSamplerDescriptorWrite.pImageInfo = &imageInfo;
+
+      std::array descriptorWrites{uniformBufferDescriptorWrite,
+                                  combinedImageSamplerDescriptorWrite};
+      device.updateDescriptorSets(descriptorWrites, {});
     }
   }
 
