@@ -999,6 +999,12 @@ class Renderer {
 
     vk::raii::Image textureImageTemp({});
     vk::raii::DeviceMemory textureImageMemoryTemp({});
+    createImage(
+        texWidth, texHeight, vk::Format::eR8G8B8A8Srgb,
+        vk::ImageTiling::eOptimal,
+        vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+        vk::MemoryPropertyFlagBits::eDeviceLocal, textureImageTemp,
+        textureImageMemoryTemp);
   }
 
   void initvulkan() {
