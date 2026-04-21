@@ -321,6 +321,7 @@ class Renderer {
             .extendedDynamicState;
 
     deviceFeatures = physicalDevice.getFeatures();
+    deviceFeatures.sampleRateShading = vk::True;
     return supportsVulkan1_3 && supportsGraphics &&
            supportsAllRequiredExtensions && supportsRequiredFeatures &&
            deviceFeatures.samplerAnisotropy;
@@ -763,11 +764,14 @@ class Renderer {
     vk::RenderingAttachmentInfo colorAttatchment;
     colorAttatchment.imageView = colorImageView;
     colorAttatchment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
-    colorAttatchment.resolveMode = vk::ResolveModeFlagBits::eAverage;
-    colorAttatchment.resolveImageView = swapChainImageViews[imageIndex];
     colorAttatchment.loadOp = vk::AttachmentLoadOp::eClear;
     colorAttatchment.storeOp = vk::AttachmentStoreOp::eStore;
     colorAttatchment.clearValue = clearColor;
+
+    colorAttatchment.resolveMode = vk::ResolveModeFlagBits::eAverage;
+    colorAttatchment.resolveImageView = swapChainImageViews[imageIndex];
+    colorAttatchment.resolveImageLayout =
+        vk::ImageLayout::eColorAttachmentOptimal;
 
     vk::RenderingAttachmentInfo depthAttatchment{};
     depthAttatchment.imageView = depthImageView;
