@@ -15,11 +15,11 @@ public:
   const std::string& get_id() { return resource_id; }
   T&                 operator->() const { return get(); }
   T&                 operator*() const { return *get(); };
-                     operator bool() const { is_valid(); }
+                     operator bool() const { return is_valid(); }
 
 private:
   std::string      resource_id;
-  ResourceManager *resource_manager = nullptr;
+  ResourceManager *resource_manager;
 };
 
 } // namespace Windy::Core

@@ -20,7 +20,7 @@ public:
     auto& type_resources = resources[std::type_index(typeid(T))];
     auto  it             = type_resources.find(resource_id);
     if (it != type_resources.end()) {
-      // increment the reference count of the resource
+      // FIX: increment the reference count of the resource
       // ref_counts[resource_id]++;
       return ResourceHandle<T>(resource_id, this);
     }
@@ -36,10 +36,20 @@ public:
   };
 
   template <typename T>
-  T *get_resource(std::string resource_id) {};
+  T *get_resource(const std::string& resource_id) {
+    auto& type_resources = resources[std::type_index(typeid(T))];
+    auto  it             = type_resources.find(resource_id);
+    if (it != type_resources.end()) {
+      return static_cast<T *>(it->second.get());
+    }
+    return nullptr;
+  };
 
   template <typename T>
-  bool has_resource(std::string resource_id) {};
+  bool has_resource(std::string resource_id) {
+    auto resource_it = resources.find(std::type_index(typeid(T)));
+    return resource_it != resources.end();
+  };
 
 private:
   struct ResourceData {
