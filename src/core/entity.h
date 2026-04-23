@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <utility>
 
-namespace Windy {
+namespace Windy::Core {
 
 class Entity {
 private:
@@ -90,4 +90,4 @@ public:
   }
 };
 
-} // namespace Windy
+} // namespace Windy::Core

@@ -5,7 +5,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include "component.h"
 
-namespace Windy {
+namespace Windy::Core {
 
 class TransformComponent final : Component {
 private:
@@ -38,4 +38,4 @@ public:
   }
 };
 
-} // namespace Windy
+} // namespace Windy::Core

@@ -2,7 +2,7 @@
 
 #include "entity.h"
 
-namespace Windy {
+namespace Windy::Core {
 
 class Event {
 public:
@@ -27,4 +27,4 @@ private:
   Entity *ent2;
 };
 
-} // namespace Windy
+} // namespace Windy::Core

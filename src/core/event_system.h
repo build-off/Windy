@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <vector>
 
-namespace Windy {
+namespace Windy::Core {
 class EventSystem {
 public:
   void add_listener(EventListener *listener) { listeners.push_back(listener); }
@@ -27,4 +27,4 @@ private:
   std::vector<EventListener *> listeners;
 };
 
-} // namespace Windy
+} // namespace Windy::Core

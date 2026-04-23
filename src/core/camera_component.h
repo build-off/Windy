@@ -7,7 +7,7 @@
 #include <glm/ext/vector_float3.hpp>
 #include <glm/trigonometric.hpp>
 
-namespace Windy {
+namespace Windy::Core {
 class CameraComponent final : Component {
 private:
   float field_of_view = 45.0f;
@@ -50,4 +50,4 @@ public:
     return projection_matrix;
   }
 };
-} // namespace Windy
+} // namespace Windy::Core

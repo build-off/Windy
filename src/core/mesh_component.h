@@ -7,7 +7,7 @@
 #include "entity.h"
 #include "transform_component.h"
 
-namespace Windy {
+namespace Windy::Core {
 
 class MeshComponent final : Component {
 private:
@@ -37,4 +37,4 @@ public:
   };
 };
 
-} // namespace Windy
+} // namespace Windy::Core

@@ -1,7 +1,8 @@
 #pragma once
 
 #include <cstddef>
-namespace Windy {
+
+namespace Windy::Core {
 
 class Entity;
 
@@ -80,4 +81,4 @@ public:
   Entity *get_owner() const { return owner; }
 };
 
-} // namespace Windy
+} // namespace Windy::Core
