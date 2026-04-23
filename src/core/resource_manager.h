@@ -20,8 +20,7 @@ public:
     auto& type_resources = resources[std::type_index(typeid(T))];
     auto  it             = type_resources.find(resource_id);
     if (it != type_resources.end()) {
-      // FIX: increment the reference count of the resource
-      // ref_counts[resource_id]++;
+      ref_counts[resource_id].ref_count++;
       return ResourceHandle<T>(resource_id, this);
     }
 
@@ -51,6 +50,33 @@ public:
     return resource_it != resources.end();
   };
 
+  void release(const std::string& resource_id) {
+    auto it = ref_counts.find(resource_id);
+    if (it != ref_counts.end()) {
+      it->second.ref_count--;
+      for (auto& [type, type_resources] : resources) {
+        auto resource_it = type_resources.find(resource_id);
+        if (resource_it != type_resources.end()) {
+          resource_it->second->unload();
+          type_resources.erase(resource_it);
+          break;
+        }
+      }
+      ref_counts.erase(it);
+    }
+  }
+
+  // useful when system shutdown, as an emergency cleanup
+  void unload_all() {
+    for (auto& [type, type_resources] : resources) {
+      for (auto& [id, resource] : type_resources) {
+        resource->unload();
+      }
+      type_resources.clear();
+    }
+    ref_counts.clear();
+  }
+
 private:
   struct ResourceData {
     Ref<Resource> resource;
@@ -58,10 +84,8 @@ private:
   };
   std::unordered_map<std::type_index,
                      std::unordered_map<std::string, Ref<Resource>>>
-      resources;
-  std::unordered_map<std::type_index,
-                     std::unordered_map<std::string, ResourceData>>
-      ref_counts;
+                                                resources;
+  std::unordered_map<std::string, ResourceData> ref_counts;
 };
 
 template <typename T>
