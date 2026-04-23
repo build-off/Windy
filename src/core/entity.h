@@ -60,12 +60,10 @@ public:
 
   template <typename T>
   T *get_component() {
-    for (auto& component : components) {
-      // the dynamic_cast can be really slow, so change for better solution to
-      // returnrning the component
-      if (T *result = dynamic_cast<T *>(component.get())) {
-        return result;
-      }
+    size_t type_id = Component::get_type_id<T>();
+    auto   it      = componentMap.find(type_id);
+    if (it != componentMap.end()) {
+      return static_cast<T *>(it->second);
     }
     return nullptr;
   };
@@ -74,10 +72,18 @@ public:
   // even though i think it should not happen
   template <typename T>
   bool remove_component() {
-    for (auto it = components.begin(); it != components.end(); it++) {
-      if (dynamic_cast<T *>(it->get())) {
-        components.erase(it);
-        return true;
+    size_t type_id = Component::get_type_id<T>();
+    auto   it      = componentMap.find(type_id);
+    if (it != componentMap.end()) {
+      Component *component_ptr = it->second;
+      componentMap.erase(it);
+
+      for (auto comp_it = components.begin(); comp_it != components.end();
+           ++comp_it) {
+        if (comp_it->get() == component_ptr) {
+          components.erase(comp_it);
+          return true;
+        }
       }
     }
     return false;
