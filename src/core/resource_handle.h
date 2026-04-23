@@ -1,7 +1,5 @@
 #pragma once
 
-#include "resource_manager.h"
-
 namespace Windy::Core {
 class ResourceManager;
 template <typename T>
@@ -11,14 +9,8 @@ public:
   ResourceHandle(const std::string& id, ResourceManager *manager)
       : resource_id{id}, resource_manager{manager} {}
 
-  T *get() const {
-    if (!resource_manager) return nullptr;
-    return resource_manager->get_resource<T>(resource_id);
-  };
-
-  bool is_valid() const {
-    return resource_manager && resource_manager->has_resource<T>(resource_id);
-  };
+  T   *get() const;
+  bool is_valid() const;
 
   const std::string& get_id() { return resource_id; }
   T&                 operator->() const { return get(); }
@@ -27,7 +19,7 @@ public:
 
 private:
   std::string      resource_id;
-  ResourceManager *resource_manager;
+  ResourceManager *resource_manager = nullptr;
 };
 
 } // namespace Windy::Core
