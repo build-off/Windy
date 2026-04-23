@@ -1,4 +1,4 @@
-BasedOnStyle: Google
+BasedOnStyle: LLVM
 # IndentWidth: 4
 AlwaysBreakTemplateDeclarations: Yes
 SpacesBeforeTrailingComments: 1
@@ -6,6 +6,8 @@ SpacesBeforeTrailingComments: 1
 AllowShortFunctionsOnASingleLine: InlineOnly
 AllowShortIfStatementsOnASingleLine: Always
 # AllowShortSpecializationsOnASingleLine: true
+AlignConsecutiveDeclarations: true
+AlignConsecutiveAssignments: true
 ColumnLimit: 80
 ReferenceAlignment: Left
 
