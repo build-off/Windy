@@ -1,8 +1,24 @@
 #pragma once
 
+#include <cstddef>
 namespace Windy {
 
 class Entity;
+
+class ComponentTypeIDSystem {
+public:
+  template <typename T>
+  static size_t get_type_id() {
+    static size_t type_id = next_type_id++;
+    return type_id;
+  };
+
+private:
+  static size_t next_type_id;
+};
+
+size_t ComponentTypeIDSystem::next_type_id = 0;
+
 class Component {
 public:
   enum class State {
@@ -29,6 +45,13 @@ private:
   State   state = State::Uninitialized;
 
 public:
+  template <typename T>
+  static size_t get_type_id() {
+    return ComponentTypeIDSystem::get_type_id<T>();
+  }
+
+  // Maybe not really a good idea to change the components name, it
+  // could become a mess
   explicit Component(const std::string& component_name = "component");
   virtual ~Component() {
     if (state != State::Destroyed) {
