@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 
 namespace Windy {
@@ -14,6 +15,7 @@ private:
   std::string                             name;
   bool                                    active = true;
   std::vector<std::unique_ptr<Component>> components;
+  std::unordered_map<size_t, Component *> componentMap;
 
 public:
   explicit Entity(const std::string& entityName) : name{entityName} {};
@@ -42,9 +44,16 @@ public:
   T *add_component(Args&&...args) {
     static_assert(std::is_base_of<Component, T>::value,
                   "T must derive from component");
-    auto component     = CreateScope<T>(std::forward(args)...);
-    T   *component_ptr = component.get();
-    component_ptr->set_owner(this);
+
+    size_t type_id = Component::get_type_id<T>();
+    auto   it      = componentMap.find(type_id);
+    if (it != componentMap.end()) {
+      return static_cast<T *>(it->second);
+    }
+
+    auto component        = CreateScope<T>(std::forward<Args>(args)...);
+    T   *component_ptr    = component.get();
+    componentMap[type_id] = component_ptr;
     components.push_back(std::move(component));
     return component_ptr;
   }
