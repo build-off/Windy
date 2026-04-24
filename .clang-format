@@ -9,6 +9,8 @@ AllowShortIfStatementsOnASingleLine: Always
 AlignConsecutiveDeclarations: true
 AlignConsecutiveAssignments: true
 ColumnLimit: 80
+
+PointerAlignment: Left
 ReferenceAlignment: Left
 
 SortIncludes: false
