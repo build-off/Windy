@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_raii.hpp>
 
 #include <functional>
@@ -194,6 +195,63 @@ public:
     // execute each pass in the computed dependency-safe order
     for (auto pass_inx : execution_order) {
       const auto& pass = passes[pass_inx];
+      wait_semaphores.clear();
+      wait_stages.clear();
+      for (size_t i = 0; i < semaphore_signal_wait_pairs.size(); ++i) {
+        if (semaphore_signal_wait_pairs[i].second == pass_inx) {
+          wait_semaphores.push_back(*semaphores[i]);
+          wait_stages.push_back(
+              vk::PipelineStageFlagBits::eColorAttachmentOutput);
+        }
+      }
+
+      signal_semaphores.clear();
+      for (size_t i = 0; i < semaphore_signal_wait_pairs.size(); ++i) {
+        if (semaphore_signal_wait_pairs[i].first == pass_inx) {
+          signal_semaphores.push_back(*semaphores[i]);
+        }
+      }
+
+      command_buffer.begin({});
+
+      for (const auto& input : pass.inputs) {
+        auto& resource = resources[input];
+
+        vk::ImageMemoryBarrier barrier;
+        barrier.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+            .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setImage(*resource.image)
+            .setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1})
+            .setSrcAccessMask(vk::AccessFlagBits::eMemoryWrite)
+            .setDstAccessMask(vk::AccessFlagBits::eMemoryRead);
+
+        // insert the pipeline barrier for safe layout transitions
+        // INFO: this pipeline barrier constructor is weird and will fail,
+        // the barrier is never passed lol
+        command_buffer.pipelineBarrier(
+            vk::PipelineStageFlagBits::eAllCommands,
+            vk::PipelineStageFlagBits::eFragmentShader,
+            vk::DependencyFlagBits::eByRegion, 0, nullptr, 0);
+      }
+
+      // transition output resources to render target layouts
+      for (const auto& output : pass.outputs) {
+        auto& resource = resources[output];
+
+        vk::ImageMemoryBarrier barrier;
+        barrier.setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
+            .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setImage(*resource.image)
+            .setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1})
+            .setSrcAccessMask(vk::AccessFlagBits::eMemoryRead)
+            .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
+      }
+
+      // Pass Execution - Execute the Actual Rendering Logic
+      // Call the user-provided rendering function with prepared command buffer
+      pass.execute_func(command_buffer);
     }
   }
 };
