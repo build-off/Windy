@@ -183,6 +183,19 @@ public:
     auto it = resources.find(name);
     return (it != resources.end()) ? &it->second : nullptr;
   }
+
+  // rendergraph execution engine [automatic syncronization]
+  void execute(vk::raii::CommandBuffer& command_buffer, vk::Queue queue) {
+    std::vector<vk::CommandBuffer>      cmd_buffers;
+    std::vector<vk::Semaphore>          wait_semaphores;
+    std::vector<vk::PipelineStageFlags> wait_stages;
+    std::vector<vk::Semaphore>          signal_semaphores;
+
+    // execute each pass in the computed dependency-safe order
+    for (auto pass_inx : execution_order) {
+      const auto& pass = passes[pass_inx];
+    }
+  }
 };
 
 } // namespace Windy::Core
