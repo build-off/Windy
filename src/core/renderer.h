@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vulkan/vulkan.hpp"
+#include <cstdint>
 #include <stdexcept>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
@@ -43,8 +45,14 @@ private:
   std::vector<Pass>                         passes;
   std::vector<size_t>                       execution_order;
 
+  std::vector<vk::raii::Semaphore>       semaphores;
   std::vector<std::pair<size_t, size_t>> semaphore_signal_wait_pairs;
   vk::raii::Device&                      device;
+
+  uint32_t find_memory_type(uint32_t                type_filter,
+                            vk::MemoryPropertyFlags properties) {
+    return 0;
+  }
 
 public:
   explicit RenderGraph(vk::raii::Device& dev) : device{dev} {};
@@ -123,6 +131,57 @@ public:
     for (size_t i = 0; i < passes.size(); ++i) {
       if (!visited[i]) visit(i);
     }
+
+    // Generate all the semaphores for all dependencies identified during
+    // analysis
+    for (size_t i = 0; i < passes.size(); ++i) {
+      for (auto dep : dependencies[i]) {
+        semaphores.emplace_back(device.createSemaphore({}));
+        semaphore_signal_wait_pairs.emplace_back(dep, i);
+      }
+    }
+
+    // Physical Resource allocation and creation
+    // Transform resource descriptions into actual GPU objects
+    for (auto& [name, resource] : resources) {
+      vk::ImageCreateInfo image_info;
+      image_info.setImageType(vk::ImageType::e2D)
+          .setFormat(resource.format)
+          .setExtent({resource.extent.width, resource.extent.height, 1})
+          .setMipLevels(1)
+          .setArrayLayers(1)
+          .setSamples(vk::SampleCountFlagBits::e1)
+          .setTiling(vk::ImageTiling::eOptimal)
+          .setUsage(resource.usage)
+          .setSharingMode(vk::SharingMode::eExclusive)
+          .setInitialLayout(vk::ImageLayout::eUndefined);
+
+      resource.image = device.createImage(image_info);
+
+      vk::MemoryRequirements mem_requirements =
+          resource.image.getMemoryRequirements();
+      vk::MemoryAllocateInfo alloc_info;
+      alloc_info.setAllocationSize(mem_requirements.size)
+          .setMemoryTypeIndex(
+              find_memory_type(mem_requirements.memoryTypeBits,
+                               vk::MemoryPropertyFlagBits::eDeviceLocal));
+
+      resource.memory = device.allocateMemory(alloc_info);
+      resource.image.bindMemory(*resource.memory, 0);
+
+      vk::ImageViewCreateInfo view_info;
+      view_info.setImage(*resource.image)
+          .setViewType(vk::ImageViewType::e2D)
+          .setFormat(resource.format)
+          .setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
+
+      resource.view = device.createImageView(view_info);
+    }
+  }
+
+  Resource* get_resource(const std::string& name) {
+    auto it = resources.find(name);
+    return (it != resources.end()) ? &it->second : nullptr;
   }
 };
 
