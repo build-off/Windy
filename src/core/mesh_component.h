@@ -1,5 +1,6 @@
 #pragma once
 
+#include "bounding_box.h"
 #include "component.h"
 #include "log.h"
 #include "material.h"
@@ -8,8 +9,6 @@
 #include "transform_component.h"
 
 namespace Windy::Core {
-
-struct BoundingBox {};
 
 class MeshComponent final : Component {
 private:

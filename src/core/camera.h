@@ -1,8 +1,13 @@
 #pragma once
 
+#include "bounding_box.h"
 namespace Windy::Core {
 
-struct Frustum {};
+// INFO: impl
+class Frustum {
+public:
+  bool intersects(BoundingBox bd_box) { return true; };
+};
 
 class Camera {
 public:
