@@ -225,6 +225,7 @@ public:
             .setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1})
             .setSrcAccessMask(vk::AccessFlagBits::eMemoryWrite)
             .setDstAccessMask(vk::AccessFlagBits::eMemoryRead);
+        std::vector<vk::ImageMemoryBarrier> v{barrier};
 
         // insert the pipeline barrier for safe layout transitions
         // INFO: this pipeline barrier constructor is weird and will fail,
@@ -232,7 +233,7 @@ public:
         command_buffer.pipelineBarrier(
             vk::PipelineStageFlagBits::eAllCommands,
             vk::PipelineStageFlagBits::eFragmentShader,
-            vk::DependencyFlagBits::eByRegion, 0, nullptr, 0);
+            vk::DependencyFlagBits::eByRegion, 0, nullptr, v);
       }
 
       // transition output resources to render target layouts
@@ -247,11 +248,37 @@ public:
             .setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1})
             .setSrcAccessMask(vk::AccessFlagBits::eMemoryRead)
             .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite);
+
+        std::vector<vk::ImageMemoryBarrier> v{barrier};
+
+        command_buffer.pipelineBarrier(
+            vk::PipelineStageFlagBits::eAllCommands,
+            vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            vk::DependencyFlagBits::eByRegion, 0, nullptr, v);
       }
 
       // Pass Execution - Execute the Actual Rendering Logic
       // Call the user-provided rendering function with prepared command buffer
       pass.execute_func(command_buffer);
+
+      for (const auto& output : pass.outputs) {
+        auto& resource = resources[output];
+
+        vk::ImageMemoryBarrier barrier;
+        barrier.setNewLayout(resource.final_layout)
+            .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setImage(*resource.image)
+            .setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1})
+            .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+            .setDstAccessMask(vk::AccessFlagBits::eMemoryRead);
+
+        std::vector<vk::ImageMemoryBarrier> v{barrier};
+        command_buffer.pipelineBarrier(
+            vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            vk::PipelineStageFlagBits::eAllCommands,
+            vk::DependencyFlagBits::eByRegion, nullptr, nullptr, v);
+      }
     }
   }
 };
