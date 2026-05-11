@@ -279,6 +279,21 @@ public:
             vk::PipelineStageFlagBits::eAllCommands,
             vk::DependencyFlagBits::eByRegion, nullptr, nullptr, v);
       }
+
+      // Command Submission with Synchronization
+      // Submit command buffer with appropriate dependency and signaling
+      // semaphores
+      command_buffer.end();
+      vk::SubmitInfo submit_info;
+      submit_info
+          .setWaitSemaphoreCount(static_cast<uint32_t>(wait_semaphores.size()))
+          .setPWaitSemaphores(wait_semaphores.data())
+          .setCommandBufferCount(1)
+          .setPCommandBuffers(&*command_buffer)
+          .setSignalSemaphoreCount(
+              static_cast<uint32_t>(signal_semaphores.size()))
+          .setPSignalSemaphores(signal_semaphores.data());
+      queue.submit(1, &submit_info, nullptr);
     }
   }
 };
